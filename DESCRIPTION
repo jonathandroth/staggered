@@ -1,13 +1,10 @@
 Package: staggered
-Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.9000
+Title: Efficient Estimation Under Staggered Treatment Timing
+Version: 1.0
 Authors@R: 
-    person(given = "First",
-           family = "Last",
-           role = c("aut", "cre"),
-           email = "first.last@example.com",
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
+    person("Jonathan", "Roth", email = "Jonathan.Roth@microsoft.com", role = c("aut","cre"))
+    person("Pedro", "H.C. Sant'Anna", email = "pedro.h.santanna@vanderbilt.edu", role = c("aut","cre"))
+Description: Efficiently estimates treatement effects in settings with randomized staggered rollouts, using tools proposed by Roth and Sant'Anna.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true

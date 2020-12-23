@@ -4,6 +4,7 @@
 #
 # sourceCpp(here("Code/matrixMultiply.cpp"))
 
+#' @export
 compute_g_level_summaries <- function(df, refine_S_g = T){
 
   g_list <- sort(unique(df$g))
@@ -491,8 +492,8 @@ calculate_adjusted_estimator_and_se <- function(df, estimand =NULL, A_theta_list
     A_0_list <- create_A0_list(g_list = g_list, t_list = t_list)
   }
 
-#  Xvar_list <- purrr::pmap(.l = list(A_0_list, S_g_list, N_g_list) , .f = function(A0,S,N){ return(1/N * eigenMapMatMult( eigenMapMatMult(A0,S) , t(A0) ) ) } )
-  Xvar_list <- purrr::pmap(.l = list(A_0_list, S_g_list, N_g_list) , .f = function(A0,S,N){ return(1/N * A0 %*%S %*% t(A0) )  } )
+  Xvar_list <- purrr::pmap(.l = list(A_0_list, S_g_list, N_g_list) , .f = function(A0,S,N){ return(1/N * eigenMapMatMult( eigenMapMatMult(A0,S) , t(A0) ) ) } )
+#  Xvar_list <- purrr::pmap(.l = list(A_0_list, S_g_list, N_g_list) , .f = function(A0,S,N){ return(1/N * A0 %*%S %*% t(A0) )  } )
 
   if(is.na(beta)){
     beta <- compute_Betastar(Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_list, Xvar_list = Xvar_list)
