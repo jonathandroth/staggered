@@ -16,4 +16,8 @@ RoxygenNote: 7.1.1
 Imports: 
     dplyr,
     reshape2,
-    purrr
+    purrr,
+    Rcpp
+LinkingTo: 
+    Rcpp,
+    RcppEigen
