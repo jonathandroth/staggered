@@ -59,7 +59,7 @@ compute_Thetahat0 <- function(Ybar_g_list, A_theta_list){
 
 compute_Xhat <- function(Ybar_g_list, A_0_list){
   A_0_Ybar_list <- purrr::map2(.x = Ybar_g_list, .y = A_0_list, .f = ~.y %*% .x)
-  Xhat <- purrr::reduce(.x = A_0_Ybar_list, .f = sum)
+  Xhat <- base::Reduce(x = A_0_Ybar_list, f = '+')
   return(Xhat)
 }
 
@@ -71,12 +71,15 @@ compute_Betastar <- function(Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_
     Xvar_list <- purrr::pmap(.l = list(A_0_list, S_g_list, N_g_list) , .f = function(A0,S,N){ return(1/N * eigenMapMatMult( eigenMapMatMult(A0,S) , t(A0) ) ) } )
   }
 
-  Xvar <- purrr::reduce(.x = Xvar_list, .f = sum)
+  #Xvar <- purrr::reduce(.x = Xvar_list, .f = sum)
+  Xvar <- base::Reduce(f = '+', x= Xvar_list)
 
   X_theta_cov_list <- purrr::pmap(.l = list(A_0_list, A_theta_list, S_g_list, N_g_list) , .f = function(A0,A_theta,S,N){ return(1/N * A0 %*% S %*% t(A_theta) ) } )
-  X_theta_cov <- purrr::reduce(.x = X_theta_cov_list, .f = sum)
+  #X_theta_cov <- purrr::reduce(.x = X_theta_cov_list, .f = sum)
+  X_theta_cov <- base::Reduce(x = X_theta_cov_list, f = '+')
 
-  betastar <- solve(Xvar) %*% X_theta_cov
+  #betastar <- solve(Xvar) %*% X_theta_cov
+  betastar <- MASS::ginv(Xvar) %*% X_theta_cov
   return(betastar)
 }
 
@@ -84,7 +87,7 @@ compute_Betastar <- function(Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_
 compute_Thetahat_beta <- function(beta, Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_list, Xvar_list = NULL){
   thetahat0 <- compute_Thetahat0(Ybar_g_list, A_theta_list)
   Xhat <- compute_Xhat(Ybar_g_list, A_0_list)
-  thetahatbeta <- thetahat0 - t(Xhat) * beta
+  thetahatbeta <- thetahat0 - t(Xhat) %*% beta
 
   return(thetahatbeta)
 }
@@ -104,15 +107,15 @@ compute_se_Thetahat_beta_conservative <- function(beta, Ybar_g_list, A_theta_lis
     #Xvar_list <- pmap(.l = list(A_0_list, S_g_list, N_g_list) , .f = function(A0,S,N){ return(1/N * A0 %*% S %*% t(A0) ) } )
     Xvar_list <- purrr::pmap(.l = list(A_0_list, S_g_list, N_g_list) , .f = function(A0,S,N){ return(1/N * eigenMapMatMult( eigenMapMatMult(A0,S) , t(A0) ) ) } )
   }
-  Xvar <- purrr::reduce(.x = Xvar_list, .f = sum)
+  Xvar <- base::Reduce(x = Xvar_list, f = '+')
 
   X_theta_cov_list <- purrr::pmap(.l = list(A_0_list, A_theta_list, S_g_list, N_g_list) , .f = function(A0,A_theta,S,N){ return(1/N * A0 %*% S %*% t(A_theta) ) } )
-  X_theta_cov <- purrr::reduce(.x = X_theta_cov_list, .f = sum)
+  X_theta_cov <- base::Reduce(x = X_theta_cov_list, f = '+')
 
   thetaVar_conservative_list <- purrr::pmap(.l = list(A_theta_list, S_g_list, N_g_list) , .f = function(A_theta,S,N){ return(1/N * A_theta %*% S %*% t(A_theta) ) } )
-  thetaVar_conservative <- purrr::reduce(.x = thetaVar_conservative_list, .f = sum)
+  thetaVar_conservative <- base::Reduce(x = thetaVar_conservative_list, f = '+')
 
-  varhat_conservative <- thetaVar_conservative + t(beta) %*% Xvar %*% beta - 2* X_theta_cov %*% beta
+  varhat_conservative <- thetaVar_conservative + t(beta) %*% Xvar %*% beta - 2* t(X_theta_cov) %*% beta
   se_conservative <- sqrt(varhat_conservative)
   return(se_conservative)
 }
@@ -152,11 +155,11 @@ compute_se_Thetahat_beta <- function(beta, Ybar_g_list, A_theta_list, A_0_list, 
   betahat_g_list <- purrr::pmap( .l = list( A_theta_list[g_geq_gMin_index], A_0_list[g_geq_gMin_index], S_g_list[g_geq_gMin_index]  ),
                           .f = function(A_theta,A_0,S_g){ MASS::ginv(M %*% S_g %*% t(M)) %*% M %*% S_g %*% t(A_theta) } )
 
-  betahat_g_sum <- purrr::reduce(betahat_g_list, sum)
+  betahat_g_sum <- base::Reduce(x = betahat_g_list, f = '+')
 
   #Compute the average of M S_g M' for all g <= t_min
   avg_MSM_list <- purrr::map(.x = S_g_list[g_geq_gMin_index], .f = function(S){ M %*% S %*% t(M) } )
-  avg_MSM <- purrr::reduce(avg_MSM_list, sum) / length(avg_MSM_list)
+  avg_MSM <- base::Reduce(x = avg_MSM_list, f='+') / length(avg_MSM_list)
 
   #calculate the adjustment factor for the conservative variance
   N <- purrr::reduce(N_g_list, sum)
