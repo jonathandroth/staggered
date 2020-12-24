@@ -116,7 +116,12 @@ compute_se_Thetahat_beta_conservative <- function(beta, Ybar_g_list, A_theta_lis
   thetaVar_conservative <- base::Reduce(x = thetaVar_conservative_list, f = '+')
 
   varhat_conservative <- thetaVar_conservative + t(beta) %*% Xvar %*% beta - 2* t(X_theta_cov) %*% beta
-  se_conservative <- sqrt(varhat_conservative)
+  if(varhat_conservative <0){
+    warning("Calculated variance is less than 0. Setting to 0.")
+    se_conservative <- 0
+  }else{
+    se_conservative <- sqrt(varhat_conservative)
+  }
   return(se_conservative)
 }
 
