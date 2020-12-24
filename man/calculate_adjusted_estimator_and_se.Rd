@@ -19,7 +19,7 @@ calculate_adjusted_estimator_and_se(
 
 \item{estimand}{The estimand to be calculated: "simple" averages all treated (t,g) combinations with weights proportional to N_g; "cohort" averages the ATEs for each cohort g, and then takes an N_g-weighted average across g; "calendar" averages ATEs for each time period, weighted by N_g for treated units, and then averages across time. The parameter can be left blank if a custom parameter is provided in A_theta_list}
 
-\item{A_theta_list}{This parameter allows for specifying a custom estimand, and should be left as NULL if estimand is specified. It is a list of matrices A_theta_g so that the parameter of interest is \sum_g A_theta_g Ybar_g, where Ybar_g = 1/N \sum_i Y_i(g)}
+\item{A_theta_list}{This parameter allows for specifying a custom estimand, and should be left as NULL if estimand is specified. It is a list of matrices A_theta_g so that the parameter of interest is sum_g A_theta_g Ybar_g, where Ybar_g = 1/N sum_i Y_i(g)}
 
 \item{beta}{Optional. A coefficient to use for covariate adjustment. If not specified, the plug-in optimal coefficient is used}
 
