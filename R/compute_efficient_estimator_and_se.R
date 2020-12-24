@@ -1,9 +1,12 @@
-# library(dplyr)
-# library(Rcpp)
-# library(reshape2)
-#
-# sourceCpp(here("Code/matrixMultiply.cpp"))
 
+#' @title Calculate group level summary statistics
+#' @description This function computes the mean-vector and covariance matrix of the outcomes for each cohort, where a cohort g is a group of units first treated in period g
+#' @param df A data frame containing panel data with the variables y (an outcome), i (an individual identifier), t (the period in which the outcome is observe), g (the period in which i is first treated, with Inf denoting never treated)
+#' @return Y_bar_list A list of the means of the outcomes for each cohort g
+#' @return S_g_list A list of covariance matrices for the outcomes for each cohort g
+#' @return N_g_list A list of the number of observations for each cohort g
+#' @return g_list A list of when the cohorts were first treated
+#' @return t_list A list of the the time periods for the outcome. The vector of outcomes corresponds with this order.
 #' @export
 compute_g_level_summaries <- function(df, refine_S_g = T){
 
@@ -81,8 +84,6 @@ compute_Betastar <- function(Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_
 compute_Thetahat_beta <- function(beta, Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_list, Xvar_list = NULL){
   thetahat0 <- compute_Thetahat0(Ybar_g_list, A_theta_list)
   Xhat <- compute_Xhat(Ybar_g_list, A_0_list)
-  betastar <- compute_Betastar(Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_list, Xvar_list = Xvar_list)
-
   thetahatbeta <- thetahat0 - t(Xhat) * beta
 
   return(thetahatbeta)
@@ -465,6 +466,14 @@ create_Atheta_list_for_simple_average_ATE <- function(g_list, t_list, N_g_list){
 
 #' @export
 #' @useDynLib staggered
+#' @title Calculate the efficient adjusted estimator in staggered rollout designs
+#' @description This functions calculates the efficient estimator for staggered rollout designs proposed by Roth and Sant'Anna.
+#' @param df A data frame containing panel data with the variables y (an outcome), i (an individual identifier), t (the period in which the outcome is observe), g (the period in which i is first treated, with Inf denoting never treated)
+#' @param estimand The estimand to be calculated: "simple" averages all treated (t,g) combinations with weights proportional to N_g; "cohort" averages the ATEs for each cohort g, and then takes an N_g-weighted average across g; "calendar" averages ATEs for each time period, weighted by N_g for treated units, and then averages across time. The parameter can be left blank if a custom parameter is provided in A_theta_list
+#' @param A_theta_list This parameter allows for specifying a custom estimand, and should be left as NULL if estimand is specified. It is a list of matrices A_theta_g so that the parameter of interest is \sum_g A_theta_g Ybar_g, where Ybar_g = 1/N \sum_i Y_i(g)
+#' @param beta Optional. A coefficient to use for covariate adjustment. If not specified, the plug-in optimal coefficient is used
+#' @param betaType. An optional parameter describing the type of covariate adjustment used. Defaults to "betaStar" if the efficient estimator is used.
+#' @return df A data.frame containing: thetahat (the point estimate), se (the standard error), se_conservative (the Neyman standard error), and betaType
 calculate_adjusted_estimator_and_se <- function(df, estimand =NULL, A_theta_list = NULL, A_0_list = NA, beta = NA, betaType = ifelse( is.na(beta), "betaStar", as.character(beta)), refine_S_g = T){
 
   g_level_summaries <- compute_g_level_summaries(df, refine_S_g = refine_S_g)
