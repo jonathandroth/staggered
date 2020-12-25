@@ -482,7 +482,7 @@ create_Atheta_list_for_simple_average_ATE <- function(g_list, t_list, N_g_list){
 #' @param beta Optional. A coefficient to use for covariate adjustment. If not specified, the plug-in optimal coefficient is used
 #' @param betaType. An optional parameter describing the type of covariate adjustment used. Defaults to "betaStar" if the efficient estimator is used.
 #' @return df A data.frame containing: thetahat (the point estimate), se (the standard error), se_conservative (the Neyman standard error), and betaType
-calculate_adjusted_estimator_and_se <- function(df, estimand =NULL, A_theta_list = NULL, A_0_list = NULL, beta = NULL, betaType = ifelse( is.null(beta), "betaStar", "Custom"), refine_S_g = T, use_DiD_A0 =F){
+calculate_adjusted_estimator_and_se <- function(df, estimand =NULL, A_theta_list = NULL, A_0_list = NULL, beta = NULL, betaType = ifelse( is.null(beta), "betaStar", "Custom"), refine_S_g = F, use_DiD_A0 =F){
 
   g_level_summaries <- compute_g_level_summaries(df, refine_S_g = refine_S_g)
   Ybar_g_list <- g_level_summaries$Ybar_g_List

@@ -24,7 +24,7 @@ create_A0_list_for_ATE_tg <- function(t, g, g_list, t_list, N_g_list){
   #Create a list of which cohorts are eligible to be controls for each of the cohorts
   #This will be a null list if not eligible
   control_cohort_indices <- purrr::map(.x = 1:length(g_list),
-                                       .f = ~ which(g_list > g-1 ))
+                                       .f = ~ which(g_list > t ))
 
   N_control_cohorts <- purrr::map_dbl(.x = control_cohort_indices, .f = ~ sum(unlist(N_g_list[.x])) )
 
