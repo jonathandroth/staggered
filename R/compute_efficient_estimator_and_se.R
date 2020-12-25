@@ -516,6 +516,10 @@ calculate_adjusted_estimator_and_se <- function(df, estimand =NULL, A_theta_list
     beta <- compute_Betastar(Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_list, Xvar_list = Xvar_list)
   }
 
+  #If beta =0, convert beta to the appropriate length
+  if(length(beta) == 1 & beta == 0){
+    beta = matrix(0,dim(A_0_list[[1]])[1])
+  }
 
   thetahat <- compute_Thetahat_beta(beta = beta,Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_list, Xvar_list = Xvar_list)
   se_conservative <- compute_se_Thetahat_beta_conservative(beta = beta,Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_list, Xvar_list = Xvar_list)
