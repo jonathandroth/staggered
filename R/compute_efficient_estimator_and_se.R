@@ -57,13 +57,14 @@ compute_Thetahat0 <- function(Ybar_g_list, A_theta_list){
   return(Thetahat0)
 }
 
+#' @export
 compute_Xhat <- function(Ybar_g_list, A_0_list){
   A_0_Ybar_list <- purrr::map2(.x = Ybar_g_list, .y = A_0_list, .f = ~.y %*% .x)
   Xhat <- base::Reduce(x = A_0_Ybar_list, f = '+')
   return(Xhat)
 }
 
-
+#' @export
 compute_Betastar <- function(Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_list, Xvar_list = NULL){
 
   if(is.null(Xvar_list)){
@@ -182,7 +183,7 @@ compute_se_Thetahat_beta <- function(beta, Ybar_g_list, A_theta_list, A_0_list, 
   return(se_adjusted)
 }
 
-
+#' @export
 create_A0_list <- function(g_list, t_list){
 
   createAtilde0_g <- function(g_index){
@@ -222,74 +223,8 @@ create_A0_list <- function(g_list, t_list){
 }
 
 
-create_Atheta_list_for_event_study <- function(eventTime, g_list, t_list, N_g_list){
-
-  #Create A_thetas for an ``event-study'' coefficient at lag eventTime
-  # This is the average treatment effects for units eventTime periods after first being treated
-  # The average is taken over all cohorts g such that there is some untreated cohort at g+eventTime
-  # Cohorts are weighted by the cohort size (N_g)
-
-  maxG <- max(g_list)
-  eligible_cohort_index <- which(g_list + eventTime < maxG)
-
-  if(length(eligible_cohort_index) == 0){stop("There are no comparison cohorts for the given eventTime")}
-
-  N_eligible <- Reduce(x = N_g_list[eligible_cohort_index], sum)
-
-  numPeriods <- length(t_list)
-
-  #Create A_theta for the treated units
-  A_theta_g_treated_fn <- function(gIndex){
-    A_theta_g <- matrix(0, nrow = 1, ncol = numPeriods)
-
-    if(gIndex %in% eligible_cohort_index){
-      g <- g_list[gIndex]
-      N_g <- N_g_list[[gIndex]]
-      event_time_index <- which(t_list == g + eventTime)
-      A_theta_g[event_time_index] <- N_g / N_eligible
-    }
-    return(A_theta_g)
-  }
 
 
-  #Create a list of which cohorts are eligible to be controls for each of the cohorts
-  #This will be a null list if not eligible
-  control_cohort_indices <- purrr::map(.x = 1:length(g_list),
-                                .f = ~ which(g_list > g_list[[.x]] + eventTime ))
-
-  N_control_cohorts <- purrr::map_dbl(.x = control_cohort_indices, .f = ~ sum(unlist(N_g_list[.x])) )
-
-  createControlWeights_helper <- function(control_g_index, treated_g_index){
-    #This function creates the weights for hte cohort in control_g_index as a controls for the cohort in treated_g_index
-
-    control_weights <- matrix(0,nrow =1, ncol = numPeriods)
-
-    #If control_g is not a valid control, return 0
-    if(! (control_g_index %in% control_cohort_indices[[treated_g_index]]) ){return(control_weights)}
-
-    g_treated <- g_list[treated_g_index]
-    N_g_control <- N_g_list[[control_g_index]]
-    N_g_treated <- N_g_list[[treated_g_index]]
-
-    t_control_index <- which(t_list == g_treated + eventTime)
-
-    control_weights[t_control_index] <- -N_g_control / N_control_cohorts[treated_g_index] * N_g_treated / N_eligible
-    return(control_weights)
-  }
-
-  createControlWeights <- function(control_g_index){
-    #Create the control weights for control_g_index using all treated cohorts, then sum them
-    controlWeights_g <- Reduce( x=  purrr::map(.x = eligible_cohort_index,
-                                        ~createControlWeights_helper(control_g_index, .x)  ) ,
-                                f= '+' )
-    return(controlWeights_g)
-  }
-
-  A_theta_treated_list <- purrr::map(.x = 1:length(g_list), A_theta_g_treated_fn)
-  A_theta_control_list <- purrr::map(.x = 1:length(g_list), createControlWeights )
-  A_theta_list <- purrr::map2(.x = A_theta_treated_list, .y = A_theta_control_list, .f = ~ .x + .y)
-  return(A_theta_list)
-}
 
 
 sum_of_lists <- function(.l){
@@ -366,6 +301,36 @@ create_Atheta_list_for_ATE_tg <- function(t, g, g_list, t_list, N_g_list){
   A_theta_list <- purrr::map2(.x = A_theta_treated_list, .y = A_theta_control_list, .f = ~ .x + .y)
   return(A_theta_list)
 }
+
+
+
+create_Atheta_list_for_event_study <- function(eventTime, g_list, t_list, N_g_list){
+
+  #Create A_thetas for an ``event-study'' coefficient at lag eventTime
+  # This is the average treatment effects for units eventTime periods after first being treated
+  # The average is taken over all cohorts g such that there is some untreated cohort at g+eventTime
+  # Cohorts are weighted by the cohort size (N_g)
+
+  maxG <- max(g_list)
+  eligible_cohort_index <- which( (g_list + eventTime < maxG ) & (g_list + eventTime <= max(t_list) ) )
+
+  if(length(eligible_cohort_index) == 0){stop("There are no comparison cohorts for the given eventTime")}
+
+  N_eligible <- Reduce(x = N_g_list[eligible_cohort_index], sum)
+
+  A_theta_lists <- purrr::map(.x = eligible_cohort_index,
+                              .f = ~ scalar_product_lists(N_g_list[[.x]]/N_eligible ,
+                                                          create_Atheta_list_for_ATE_tg(t =g_list[.x]+eventTime, g = g_list[.x], g_list = g_list ,t_list = t_list, N_g_list = N_g_list) ) )
+
+  if(length(eligible_cohort_index) == 1){
+    A_theta_list <- A_theta_lists[[1]]
+  }else{
+    A_theta_list <- sum_of_lists(A_theta_lists)
+  }
+  return(A_theta_list)
+}
+
+
 
 
 create_Atheta_list_for_ATE_calendar_t <- function(t, g_list, t_list, N_g_list){
@@ -445,7 +410,7 @@ create_Atheta_list_for_calendar_average_ATE <- function(g_list, t_list, N_g_list
 }
 
 
-
+#' @export
 create_Atheta_list_for_simple_average_ATE <- function(g_list, t_list, N_g_list){
 
   #Create a df with all the (g,t) pairs for which ATE is identified

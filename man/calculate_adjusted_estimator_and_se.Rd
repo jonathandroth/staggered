@@ -8,10 +8,11 @@ calculate_adjusted_estimator_and_se(
   df,
   estimand = NULL,
   A_theta_list = NULL,
-  A_0_list = NA,
-  beta = NA,
-  betaType = ifelse(is.na(beta), "betaStar", as.character(beta)),
-  refine_S_g = T
+  A_0_list = NULL,
+  beta = NULL,
+  betaType = ifelse(is.null(beta), "betaStar", "Custom"),
+  refine_S_g = F,
+  use_DiD_A0 = F
 )
 }
 \arguments{
