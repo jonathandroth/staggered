@@ -1,32 +1,3 @@
-create_A0_list_for_event_study <- function(eventTime, g_list, t_list, N_g_list){
-
-  #Create A0s for an ``event-study'' coefficient at lag eventTime
-  # This estimand is the average treatment effects for units eventTime periods after first being treated
-  # The average is taken over all cohorts g such that there is some untreated cohort at g+eventTime
-  # Cohorts are weighted by the cohort size (N_g)
-  # This function returns the pre-period differences used as control in CS
-  # i.e, the estimate of the the difference in period g-1 btwn cohort g and units not-yet-treated at g+eventTime
-
-  maxG <- max(g_list)
-  eligible_cohort_index <- which( (g_list + eventTime < maxG ) & (g_list + eventTime <= max(t_list) ) )
-
-  if(length(eligible_cohort_index) == 0){stop("There are no comparison cohorts for the given eventTime")}
-
-  N_eligible <- Reduce(x = N_g_list[eligible_cohort_index], sum)
-
-  A0_lists <- purrr::map(.x = eligible_cohort_index,
-                              .f = ~ scalar_product_lists(N_g_list[[.x]]/N_eligible ,
-                                                          create_Atheta_list_for_ATE_tg(t =g_list[.x]-1, g = g_list[.x], g_list = g_list ,t_list = t_list, N_g_list = N_g_list) ) )
-
-  if(length(eligible_cohort_index) == 1){
-    A0_list <- A_theta_lists[[1]]
-  }else{
-    A0_list <- sum_of_lists(A_theta_lists)
-  }
-  return(A0_list)
-}
-
-
 
 
 create_A0_list_for_ATE_tg <- function(t, g, g_list, t_list, N_g_list){
@@ -89,6 +60,37 @@ create_A0_list_for_ATE_tg <- function(t, g, g_list, t_list, N_g_list){
   A0_list <- purrr::map2(.x = A0_treated_list, .y = A0_control_list, .f = ~ .x + .y)
   return(A0_list)
 }
+
+
+create_A0_list_for_event_study <- function(eventTime, g_list, t_list, N_g_list){
+
+  #Create A0s for an ``event-study'' coefficient at lag eventTime
+  # This estimand is the average treatment effects for units eventTime periods after first being treated
+  # The average is taken over all cohorts g such that there is some untreated cohort at g+eventTime
+  # Cohorts are weighted by the cohort size (N_g)
+  # This function returns the pre-period differences used as control in CS
+  # i.e, the estimate of the the difference in period g-1 btwn cohort g and units not-yet-treated at g+eventTime
+
+  maxG <- max(g_list)
+  eligible_cohort_index <- which( (g_list + eventTime < maxG ) & (g_list + eventTime <= max(t_list) ) )
+
+  if(length(eligible_cohort_index) == 0){stop("There are no comparison cohorts for the given eventTime")}
+
+  N_eligible <- Reduce(x = N_g_list[eligible_cohort_index], sum)
+
+  A0_lists <- purrr::map(.x = eligible_cohort_index,
+                         .f = ~ scalar_product_lists(N_g_list[[.x]]/N_eligible ,
+                                                     create_A0_list_for_ATE_tg(t =g_list[.x]+eventTime, g = g_list[.x], g_list = g_list ,t_list = t_list, N_g_list = N_g_list) ) )
+
+  if(length(eligible_cohort_index) == 1){
+    A0_list <- A0_lists[[1]]
+  }else{
+    A0_list <- sum_of_lists(A0_lists)
+  }
+  return(A0_list)
+}
+
+
 
 
 create_A0_list_for_ATE_calendar_t <- function(t, g_list, t_list, N_g_list){

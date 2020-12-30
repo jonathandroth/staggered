@@ -241,9 +241,9 @@ scalar_product_lists <- function(c,.l){
 }
 
 
-create_Atheta_list_for_ATE_tg <- function(t, g, g_list, t_list, N_g_list){
+create_Atheta_list_for_ATE_tg <- function(t, g, g_list, t_list, N_g_list, showWarnings =T){
   numPeriods <- length(t_list)
-  if(t < g){warning("t is less than g. ATE(t,g) is zero by assumption")}
+  if(t < g & showWarnings){warning("t is less than g. ATE(t,g) is zero by assumption")}
   if(t >= max(g_list)){stop("t is greater than max(g)-1; ATE(t,g) is not identified.")}
   #Create A_thetas for ATT_{t,g}
   treated_cohort_index <- which(g_list == g)
@@ -442,12 +442,14 @@ create_Atheta_list_for_simple_average_ATE <- function(g_list, t_list, N_g_list){
 #' @title Calculate the efficient adjusted estimator in staggered rollout designs
 #' @description This functions calculates the efficient estimator for staggered rollout designs proposed by Roth and Sant'Anna.
 #' @param df A data frame containing panel data with the variables y (an outcome), i (an individual identifier), t (the period in which the outcome is observe), g (the period in which i is first treated, with Inf denoting never treated)
-#' @param estimand The estimand to be calculated: "simple" averages all treated (t,g) combinations with weights proportional to N_g; "cohort" averages the ATEs for each cohort g, and then takes an N_g-weighted average across g; "calendar" averages ATEs for each time period, weighted by N_g for treated units, and then averages across time. The parameter can be left blank if a custom parameter is provided in A_theta_list
+#' @param estimand The estimand to be calculated: "simple" averages all treated (t,g) combinations with weights proportional to N_g; "cohort" averages the ATEs for each cohort g, and then takes an N_g-weighted average across g; "calendar" averages ATEs for each time period, weighted by N_g for treated units, and then averages across time. "EventStudy" returns the average effect at the ''event-time'' given in the parameter EventTime.  The parameter can be left blank if a custom parameter is provided in A_theta_list
 #' @param A_theta_list This parameter allows for specifying a custom estimand, and should be left as NULL if estimand is specified. It is a list of matrices A_theta_g so that the parameter of interest is sum_g A_theta_g Ybar_g, where Ybar_g = 1/N sum_i Y_i(g)
+#' @param A_0_list This parameter allow for specifying the matrices used to construct the Xhat vector of pre-treatment differences. If left NULL, the default is to use the scalar set of controls used in Callaway and Sant'Anna. If use_DiD_A0 = F, then it uses the full vector possible comparisons of (g,g') in periods t<g,g'.
+#' @param eventTime If using estimand = "eventstudy", specify what eventTime you want the event-study parameter for. The default is 0, the period in which treatment occurs
 #' @param beta Optional. A coefficient to use for covariate adjustment. If not specified, the plug-in optimal coefficient is used
 #' @param betaType. An optional parameter describing the type of covariate adjustment used. Defaults to "betaStar" if the efficient estimator is used.
 #' @return df A data.frame containing: thetahat (the point estimate), se (the standard error), se_conservative (the Neyman standard error), and betaType
-calculate_adjusted_estimator_and_se <- function(df, estimand =NULL, A_theta_list = NULL, A_0_list = NULL, beta = NULL, betaType = ifelse( is.null(beta), "betaStar", "Custom"), refine_S_g = F, use_DiD_A0 =F){
+calculate_adjusted_estimator_and_se <- function(df, estimand =NULL, A_theta_list = NULL, A_0_list = NULL, eventTime = 0, beta = NULL, betaType = ifelse( is.null(beta), "betaStar", "Custom"), refine_S_g = F, use_DiD_A0 =T){
 
   g_level_summaries <- compute_g_level_summaries(df, refine_S_g = refine_S_g)
   Ybar_g_list <- g_level_summaries$Ybar_g_List
@@ -464,10 +466,12 @@ calculate_adjusted_estimator_and_se <- function(df, estimand =NULL, A_theta_list
       A_theta_list <- create_Atheta_list_for_cohort_average_ATE(g_list = g_list, t_list = t_list,N_g_list = N_g_list)
     }else if(estimand == "calendar"){
       A_theta_list <- create_Atheta_list_for_calendar_average_ATE(g_list = g_list, t_list = t_list,N_g_list = N_g_list)
+    }else if(estimand == "eventstudy"){
+      A_theta_list <- create_Atheta_list_for_event_study(eventTime = eventTime, g_list = g_list, t_list = t_list,N_g_list = N_g_list)
     }
   }
   #If no valid estimand is provided and no A_theta_list, throw and error
-  if(is.null(A_theta_list)){stop("Estimand must be one of simple, cohort, or calendar; or custom A_theta_list must be provided")}
+  if(is.null(A_theta_list)){stop("Estimand must be one of simple, cohort, calendar, or eventstudy; or custom A_theta_list must be provided")}
 
   #Create A_0_list if a custom A_0_list is not provided
   if(is.null(A_0_list) & use_DiD_A0==F){
@@ -482,6 +486,8 @@ calculate_adjusted_estimator_and_se <- function(df, estimand =NULL, A_theta_list
       A_0_list <- create_A0_list_for_cohort_average_ATE(g_list = g_list, t_list = t_list,N_g_list = N_g_list)
     }else if(estimand == "calendar"){
       A_0_list <- create_A0_list_for_calendar_average_ATE(g_list = g_list, t_list = t_list,N_g_list = N_g_list)
+    }else if(estimand == "eventstudy"){
+      A_0_list <- create_A0_list_for_event_study(eventTime = eventTime, g_list = g_list, t_list = t_list,N_g_list = N_g_list)
     }
 
   }
