@@ -58,6 +58,7 @@ compute_Thetahat0 <- function(Ybar_g_list, A_theta_list){
 }
 
 #' @export
+#' @description This function computes the vector Xhat of pre-treatment differences given the list of cohort means Ybar_g_list and the list of matrices A_0_list
 compute_Xhat <- function(Ybar_g_list, A_0_list){
   A_0_Ybar_list <- purrr::map2(.x = Ybar_g_list, .y = A_0_list, .f = ~.y %*% .x)
   Xhat <- base::Reduce(x = A_0_Ybar_list, f = '+')
@@ -65,6 +66,7 @@ compute_Xhat <- function(Ybar_g_list, A_0_list){
 }
 
 #' @export
+#' @description This function computes the plug-in efficient betahat
 compute_Betastar <- function(Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_list, Xvar_list = NULL){
 
   if(is.null(Xvar_list)){
@@ -184,6 +186,7 @@ compute_se_Thetahat_beta <- function(beta, Ybar_g_list, A_theta_list, A_0_list, 
 }
 
 #' @export
+#' @description This function creates the list of A_0 matrices for Xhat corresponding with all possible comparisons of cohorts before they are treated
 create_A0_list <- function(g_list, t_list){
 
   createAtilde0_g <- function(g_index){
@@ -446,8 +449,9 @@ create_Atheta_list_for_simple_average_ATE <- function(g_list, t_list, N_g_list){
 #' @param A_theta_list This parameter allows for specifying a custom estimand, and should be left as NULL if estimand is specified. It is a list of matrices A_theta_g so that the parameter of interest is sum_g A_theta_g Ybar_g, where Ybar_g = 1/N sum_i Y_i(g)
 #' @param A_0_list This parameter allow for specifying the matrices used to construct the Xhat vector of pre-treatment differences. If left NULL, the default is to use the scalar set of controls used in Callaway and Sant'Anna. If use_DiD_A0 = F, then it uses the full vector possible comparisons of (g,g') in periods t<g,g'.
 #' @param eventTime If using estimand = "eventstudy", specify what eventTime you want the event-study parameter for. The default is 0, the period in which treatment occurs
-#' @param beta Optional. A coefficient to use for covariate adjustment. If not specified, the plug-in optimal coefficient is used
+#' @param beta Optional. A coefficient to use for covariate adjustment. If not specified, the plug-in optimal coefficient is used. beta =0 corresponds with the simple difference-in-means. beta = 1 corresponds with the Callaway and Sant'Anna estimator when using the default value of use_DiD_A0=T.
 #' @param betaType. An optional parameter describing the type of covariate adjustment used. Defaults to "betaStar" if the efficient estimator is used.
+#' @param  use_DiD_A0 If this parameter is true, then Xhat corresponds with the scalar used by Callaway and Sant'Anna, so the Callaway and Sant'Anna estimator corresponds with beta=1. If it is false, the Xhat is a vector with all possible comparisons of pairs of cohorts before either is treated. The latter option should only be used when the number of possible comparisons is small relative to sample size.
 #' @return df A data.frame containing: thetahat (the point estimate), se (the standard error), se_conservative (the Neyman standard error), and betaType
 calculate_adjusted_estimator_and_se <- function(df, estimand =NULL, A_theta_list = NULL, A_0_list = NULL, eventTime = 0, beta = NULL, betaType = ifelse( is.null(beta), "betaStar", "Custom"), refine_S_g = F, use_DiD_A0 =ifelse(is.null(A_0_list),T,F)){
 

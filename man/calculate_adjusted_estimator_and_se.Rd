@@ -13,7 +13,7 @@ calculate_adjusted_estimator_and_se(
   beta = NULL,
   betaType = ifelse(is.null(beta), "betaStar", "Custom"),
   refine_S_g = F,
-  use_DiD_A0 = T
+  use_DiD_A0 = ifelse(is.null(A_0_list), T, F)
 )
 }
 \arguments{
@@ -27,7 +27,9 @@ calculate_adjusted_estimator_and_se(
 
 \item{eventTime}{If using estimand = "eventstudy", specify what eventTime you want the event-study parameter for. The default is 0, the period in which treatment occurs}
 
-\item{beta}{Optional. A coefficient to use for covariate adjustment. If not specified, the plug-in optimal coefficient is used}
+\item{beta}{Optional. A coefficient to use for covariate adjustment. If not specified, the plug-in optimal coefficient is used. beta =0 corresponds with the simple difference-in-means. beta = 1 corresponds with the Callaway and Sant'Anna estimator when using the default value of use_DiD_A0=T.}
+
+\item{use_DiD_A0}{If this parameter is true, then Xhat corresponds with the scalar used by Callaway and Sant'Anna, so the Callaway and Sant'Anna estimator corresponds with beta=1. If it is false, the Xhat is a vector with all possible comparisons of pairs of cohorts before either is treated. The latter option should only be used when the number of possible comparisons is small relative to sample size.}
 
 \item{betaType.}{An optional parameter describing the type of covariate adjustment used. Defaults to "betaStar" if the efficient estimator is used.}
 }
