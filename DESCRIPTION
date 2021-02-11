@@ -1,11 +1,11 @@
 Package: staggered
 Title: Efficient Estimation Under Staggered Treatment Timing
-Version: 1.0
+Version: 0.1
 Authors@R: 
-    person("Jonathan", "Roth", email = "Jonathan.Roth@microsoft.com", role = c("aut","cre"))
-    person("Pedro H.C.", "Sant'Anna", email = "pedro.h.santanna@vanderbilt.edu", role = c("aut","cre"))
+    c(person("Jonathan", "Roth", email = "Jonathan.Roth@microsoft.com", role = c("aut","cre")),
+    person("Pedro H.C.", "Sant'Anna", email = "pedro.h.santanna@vanderbilt.edu", role = c("aut")))
 Description: Efficiently estimates treatement effects in settings with randomized staggered rollouts, using tools proposed by Roth and Sant'Anna.
-License: MIT + file LICENSE
+License: GPL-2
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
@@ -19,4 +19,4 @@ LinkingTo:
     Rcpp,
     RcppEigen
 Depends: 
-    R (>= 2.10)
+    R (>= 3.50)

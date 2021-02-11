@@ -4,7 +4,7 @@
 \alias{compute_g_level_summaries}
 \title{Calculate group level summary statistics}
 \usage{
-compute_g_level_summaries(df, refine_S_g = T)
+compute_g_level_summaries(df)
 }
 \arguments{
 \item{df}{A data frame containing panel data with the variables y (an outcome), i (an individual identifier), t (the period in which the outcome is observe), g (the period in which i is first treated, with Inf denoting never treated)}

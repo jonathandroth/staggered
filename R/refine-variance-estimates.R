@@ -1,4 +1,8 @@
-refine_S_g_estimates <- function(S_g_list, Y_g_list, N_g_list, g_list, t_list){
+refine_S_g_estimates <- function(S_g_list,
+                                 Y_g_list,
+                                 N_g_list,
+                                 g_list,
+                                 t_list){
 
   #This function takes a list of preliminary S_g estimates using the sample covariance for cohort g
   # It then updates the covariance estimates by pooling data across cohorts for all t<g
@@ -8,9 +12,13 @@ refine_S_g_estimates <- function(S_g_list, Y_g_list, N_g_list, g_list, t_list){
     g_after_t_index <- which(g_list > t)
     time_leq_t_index <- which(t_list <= t)
 
-    N_pooled <- purrr::reduce(N_g_list[g_after_t_index], sum)
+    N_pooled <- purrr::reduce(N_g_list[g_after_t_index],
+                              sum)
     #Ybar_pooled <- 1/N_pooled * reduce( map(.x = g_after_t_index, ~ N_g_list[[.x]] * Y_g_list[[.x]]) , sum)
-    Ybar_pooled <- 1/N_pooled * Reduce(x = purrr::map2(.x = N_g_list, .y = Y_g_list, .f = ~ .x * .y[time_leq_t_index]), f= '+' )
+    Ybar_pooled <- 1/N_pooled * Reduce(x = purrr::map2(.x = N_g_list,
+                                                       .y = Y_g_list,
+                                                       .f = ~ .x * .y[time_leq_t_index]),
+                                       f= '+' )
     # Compute \sum_{i: g_i = g} (Y_i - Y_g) (Y_i - Y_g)'
     sum_squared_residuals_g_functions <- function(gIndex){
       S_g <- S_g_list[[gIndex]]
@@ -27,7 +35,9 @@ refine_S_g_estimates <- function(S_g_list, Y_g_list, N_g_list, g_list, t_list){
     }
 
     #Sum the residuals for all g > t, then divide by N_pooled
-    pooled_S <- 1/(N_pooled - 1) * Reduce(x = purrr::map(.x = g_after_t_index, .f = sum_squared_residuals_g_functions), sum)
+    pooled_S <- 1/(N_pooled - 1) * base::Reduce(x = purrr::map(.x = g_after_t_index,
+                                                               .f = sum_squared_residuals_g_functions),
+                                          sum)
 
     return(pooled_S)
   }
@@ -38,7 +48,9 @@ refine_S_g_estimates <- function(S_g_list, Y_g_list, N_g_list, g_list, t_list){
     S_g_modified <- S_g
 
     #If no pre-treatment periods are in data, return S_g
-    if(g <= min(t_list)){ return(S_g) }
+    if(g <= min(t_list)){
+      return(S_g)
+      }
 
     #Create indiex of periods before g
     t_less_than_g_index <- which(t_list < g)
@@ -52,7 +64,8 @@ refine_S_g_estimates <- function(S_g_list, Y_g_list, N_g_list, g_list, t_list){
     return(S_g_modified)
   }
 
- S_g_modified_list <- purrr::map(.x = 1:length(g_list), .f = refine_S_g)
+ S_g_modified_list <- purrr::map(.x = 1:length(g_list),
+                                 .f = refine_S_g)
 
  return(S_g_modified_list)
 }

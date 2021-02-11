@@ -8,7 +8,7 @@
 #' @return g_list A list of when the cohorts were first treated
 #' @return t_list A list of the the time periods for the outcome. The vector of outcomes corresponds with this order.
 #' @export
-compute_g_level_summaries <- function(df, refine_S_g = T){
+compute_g_level_summaries <- function(df){
 
   g_list <- sort(unique(df$g))
   t_list <- sort(unique(df$t))
@@ -26,58 +26,94 @@ compute_g_level_summaries <- function(df, refine_S_g = T){
     dfg <- dfg[,order(tVec)]
 
     #Calculate the number of observation N_g
-    N_g <- NROW(dfg)
+    N_g <- base::NROW(dfg)
 
     #Convert to matrix for taking a covariance
     dfg <- dfg %>% as.matrix()
 
     #Compute means Ybar_g and covariance S_g
-    Ybar_g <- colMeans(dfg)
+    Ybar_g <- base::colMeans(dfg)
     S_g <- var(dfg)
 
 
-    return(list(Ybar_g = Ybar_g, S_g = S_g, N_g = N_g ) )
+    return(list(Ybar_g = Ybar_g,
+                S_g = S_g,
+                N_g = N_g))
   }
 
-  resultsList <- purrr::map(.x = g_list, .f = compute_Ybar_Sbar_g)
+  resultsList <- purrr::map(.x = g_list,
+                            .f = compute_Ybar_Sbar_g)
 
-  Ybar_g_List <- purrr::map(.x = resultsList, .f = ~.x$Ybar_g)
-  S_g_List <- purrr::map(.x = resultsList, .f = ~.x$S_g)
-  N_g_List <- purrr::map(.x = resultsList, .f = ~.x$N_g)
+  Ybar_g_List <- purrr::map(.x = resultsList,
+                            .f = ~.x$Ybar_g)
 
-  if(refine_S_g){S_g_List <- refine_S_g_estimates(S_g_list = S_g_List, Y_g_list = Ybar_g_List, N_g_list = N_g_List, g_list = g_list, t_list = t_list)}
+  S_g_List <- purrr::map(.x = resultsList,
+                         .f = ~.x$S_g)
 
-  return( list( Ybar_g_List = Ybar_g_List, S_g_List = S_g_List, N_g_List = N_g_List, g_list = g_list, t_list = t_list ) )
+  N_g_List <- purrr::map(.x = resultsList,
+                         .f = ~.x$N_g)
+
+
+  return( list( Ybar_g_List = Ybar_g_List,
+                S_g_List = S_g_List,
+                N_g_List = N_g_List,
+                g_list = g_list,
+                t_list = t_list ))
 }
 
 
-compute_Thetahat0 <- function(Ybar_g_list, A_theta_list){
-  A_theta_Ybar_list <- purrr::map2(.x = Ybar_g_list, .y = A_theta_list, .f = ~.y %*% .x)
-  Thetahat0 <- purrr::reduce(.x = A_theta_Ybar_list, .f = sum)
+compute_Thetahat0 <- function(Ybar_g_list,
+                              A_theta_list){
+
+  A_theta_Ybar_list <- purrr::map2(.x = Ybar_g_list,
+                                   .y = A_theta_list,
+                                   .f = ~.y %*% .x)
+  Thetahat0 <- purrr::reduce(.x = A_theta_Ybar_list,
+                             .f = sum)
   return(Thetahat0)
 }
 
 #' @export
-#' @description This function computes the vector Xhat of pre-treatment differences given the list of cohort means Ybar_g_list and the list of matrices A_0_list
+#' @title Compute Xhat of pre-treatment differences
+#' @description \code{compute_Xhat} computes the vector Xhat of pre-treatment differences given the list of cohort means
+#' Ybar_g_list and the list of matrices A_0_list
 compute_Xhat <- function(Ybar_g_list, A_0_list){
-  A_0_Ybar_list <- purrr::map2(.x = Ybar_g_list, .y = A_0_list, .f = ~.y %*% .x)
-  Xhat <- base::Reduce(x = A_0_Ybar_list, f = '+')
+  A_0_Ybar_list <- purrr::map2(.x = Ybar_g_list,
+                               .y = A_0_list,
+                               .f = ~.y %*% .x)
+  Xhat <- base::Reduce(x = A_0_Ybar_list,
+                       f = '+')
   return(Xhat)
 }
 
 #' @export
-#' @description This function computes the plug-in efficient betahat
-compute_Betastar <- function(Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_list, Xvar_list = NULL){
+#' @title  Plug-in efficient Beta hat
+#' @description \code{compute_Betastar} computes the plug-in efficient betahat
+compute_Betastar <- function(Ybar_g_list,
+                             A_theta_list,
+                             A_0_list,
+                             S_g_list,
+                             N_g_list,
+                             Xvar_list = NULL){
 
   if(is.null(Xvar_list)){
     #Xvar_list <- pmap(.l = list(A_0_list, S_g_list, N_g_list) , .f = function(A0,S,N){ return(1/N * A0 %*% S %*% t(A0) ) } )
-    Xvar_list <- purrr::pmap(.l = list(A_0_list, S_g_list, N_g_list) , .f = function(A0,S,N){ return(1/N * eigenMapMatMult( eigenMapMatMult(A0,S) , t(A0) ) ) } )
+    Xvar_list <- purrr::pmap(.l = list(A_0_list,
+                                       S_g_list, N_g_list),
+                             .f = function(A0,S,N){ return(1/N * eigenMapMatMult( eigenMapMatMult(A0,S) , t(A0) ) ) }
+                             )
   }
 
   #Xvar <- purrr::reduce(.x = Xvar_list, .f = sum)
-  Xvar <- base::Reduce(f = '+', x= Xvar_list)
+  Xvar <- base::Reduce(f = '+',
+                       x= Xvar_list)
 
-  X_theta_cov_list <- purrr::pmap(.l = list(A_0_list, A_theta_list, S_g_list, N_g_list) , .f = function(A0,A_theta,S,N){ return(1/N * A0 %*% S %*% t(A_theta) ) } )
+  X_theta_cov_list <- purrr::pmap(.l = list(A_0_list,
+                                            A_theta_list,
+                                            S_g_list,
+                                            N_g_list),
+                                  .f = function(A0,A_theta,S,N){ return(1/N * A0 %*% S %*% t(A_theta) ) }
+                                  )
   #X_theta_cov <- purrr::reduce(.x = X_theta_cov_list, .f = sum)
   X_theta_cov <- base::Reduce(x = X_theta_cov_list, f = '+')
 
@@ -87,64 +123,140 @@ compute_Betastar <- function(Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_
 }
 
 
-compute_Thetahat_beta <- function(beta, Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_list, Xvar_list = NULL){
-  thetahat0 <- compute_Thetahat0(Ybar_g_list, A_theta_list)
-  Xhat <- compute_Xhat(Ybar_g_list, A_0_list)
-  thetahatbeta <- thetahat0 - t(Xhat) %*% beta
+compute_Thetahat_beta <- function(beta,
+                                  Ybar_g_list,
+                                  A_theta_list,
+                                  A_0_list,
+                                  S_g_list,
+                                  N_g_list,
+                                  Xvar_list = NULL){
+
+  thetahat0 <- compute_Thetahat0(Ybar_g_list,
+                                 A_theta_list)
+
+  Xhat <- compute_Xhat(Ybar_g_list,
+                       A_0_list)
+
+  thetahatbeta <- thetahat0 - base::crossprod(Xhat, beta)
 
   return(thetahatbeta)
 }
 
-compute_Thetahat_Star <- function(Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_list){
+compute_Thetahat_Star <- function(Ybar_g_list,
+                                  A_theta_list,
+                                  A_0_list,
+                                  S_g_list,
+                                  N_g_list){
 
-  betastar <- compute_Betastar(Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_list)
+  betastar <- compute_Betastar(Ybar_g_list,
+                               A_theta_list,
+                               A_0_list,
+                               S_g_list,
+                               N_g_list)
 
-  thetahatstar <- compute_Thetahat_beta(beta = betastar, Ybar_g_list = Ybar_g_list, A_theta_list = A_theta_list, A_0_list = A_0_list, S_g_list = S_g_list, N_g_list = N_g_list)
+  thetahatstar <- compute_Thetahat_beta(beta = betastar,
+                                        Ybar_g_list = Ybar_g_list,
+                                        A_theta_list = A_theta_list,
+                                        A_0_list = A_0_list,
+                                        S_g_list = S_g_list,
+                                        N_g_list = N_g_list)
 
   return(thetahatstar)
 }
 
-compute_se_Thetahat_beta_conservative <- function(beta, Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_list,Xvar_list = NULL, ...){
+compute_se_Thetahat_beta_conservative <- function(beta,
+                                                  Ybar_g_list,
+                                                  A_theta_list,
+                                                  A_0_list,
+                                                  S_g_list,
+                                                  N_g_list,
+                                                  Xvar_list = NULL,
+                                                  ...){
 
   if(is.null(Xvar_list)){
     #Xvar_list <- pmap(.l = list(A_0_list, S_g_list, N_g_list) , .f = function(A0,S,N){ return(1/N * A0 %*% S %*% t(A0) ) } )
-    Xvar_list <- purrr::pmap(.l = list(A_0_list, S_g_list, N_g_list) , .f = function(A0,S,N){ return(1/N * eigenMapMatMult( eigenMapMatMult(A0,S) , t(A0) ) ) } )
+    Xvar_list <- purrr::pmap(.l = list(A_0_list,
+                                       S_g_list,
+                                       N_g_list),
+                             .f = function(A0,S,N){
+                               return(1/N * eigenMapMatMult( eigenMapMatMult(A0,S) , t(A0) ) )
+                               }
+                             )
   }
-  Xvar <- base::Reduce(x = Xvar_list, f = '+')
+  Xvar <- base::Reduce(x = Xvar_list,
+                       f = '+')
 
-  X_theta_cov_list <- purrr::pmap(.l = list(A_0_list, A_theta_list, S_g_list, N_g_list) , .f = function(A0,A_theta,S,N){ return(1/N * A0 %*% S %*% t(A_theta) ) } )
-  X_theta_cov <- base::Reduce(x = X_theta_cov_list, f = '+')
+  X_theta_cov_list <- purrr::pmap(.l = list(A_0_list,
+                                            A_theta_list,
+                                            S_g_list,
+                                            N_g_list),
+                                  .f = function(A0,A_theta,S,N){
+                                    return(1/N * A0 %*% S %*% t(A_theta) )
+                                    }
+                                  )
+  X_theta_cov <- base::Reduce(x = X_theta_cov_list,
+                              f = '+')
 
-  thetaVar_conservative_list <- purrr::pmap(.l = list(A_theta_list, S_g_list, N_g_list) , .f = function(A_theta,S,N){ return(1/N * A_theta %*% S %*% t(A_theta) ) } )
-  thetaVar_conservative <- base::Reduce(x = thetaVar_conservative_list, f = '+')
+  thetaVar_conservative_list <- purrr::pmap(.l = list(A_theta_list,
+                                                      S_g_list,
+                                                      N_g_list)
+                                            , .f = function(A_theta,S,N){
+                                              return(1/N * A_theta %*% S %*% t(A_theta) )
+                                              }
+                                            )
+  thetaVar_conservative <- base::Reduce(x = thetaVar_conservative_list,
+                                        f = '+')
 
-  varhat_conservative <- thetaVar_conservative + t(beta) %*% Xvar %*% beta - 2* t(X_theta_cov) %*% beta
+  varhat_conservative <- thetaVar_conservative + t(beta) %*% Xvar %*% beta - 2 * t(X_theta_cov) %*% beta
+
   if(varhat_conservative <0){
     warning("Calculated variance is less than 0. Setting to 0.")
-    se_conservative <- 0
+    se_neyman <- 0
   }else{
-    se_conservative <- sqrt(varhat_conservative)
+    se_neyman <- sqrt(varhat_conservative)
   }
-  return(se_conservative)
+  return(se_neyman)
 }
 
-computeGMin <- function(A_theta_list,g_list){
-  A_theta_is_nonzero <- purrr::map_lgl(.x = A_theta_list, .f = ~max( abs(.x)) != 0 )
+computeGMin <- function(A_theta_list,
+                        g_list){
+
+  A_theta_is_nonzero <- purrr::map_lgl(.x = A_theta_list,
+                                       .f = ~max( abs(.x)) != 0 )
+
   min_nonzero_index <- min( which(A_theta_is_nonzero) )
   g_min <- g_list[min_nonzero_index]
 
-  if(length(g_min) == 0){ g_min = g_list[1] }
+  if(length(g_min) == 0){
+    g_min = g_list[1]
+    }
 
   return(g_min)
 }
 
 
 
-compute_se_Thetahat_beta <- function(beta, Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_list, g_list, t_list, Xvar_list = NULL){
+compute_se_Thetahat_beta <- function(beta,
+                                     Ybar_g_list,
+                                     A_theta_list,
+                                     A_0_list,
+                                     S_g_list,
+                                     N_g_list,
+                                     g_list,
+                                     t_list,
+                                     Xvar_list = NULL){
 
-  seConservative <- compute_se_Thetahat_beta_conservative(beta, Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_list, Xvar_list =  Xvar_list)
+  seConservative <- compute_se_Thetahat_beta_conservative(beta,
+                                                          Ybar_g_list,
+                                                          A_theta_list,
+                                                          A_0_list,
+                                                          S_g_list,
+                                                          N_g_list,
+                                                          Xvar_list =  Xvar_list)
 
-  gMin <- computeGMin(A_theta_list = A_theta_list, g_list = g_list)
+  gMin <- computeGMin(A_theta_list = A_theta_list,
+                      g_list = g_list)
+
   g_geq_gMin_index <- which(g_list >= gMin) #which indices of g are >= gMin
 
   tMin <- min(t_list)
@@ -152,25 +264,37 @@ compute_se_Thetahat_beta <- function(beta, Ybar_g_list, A_theta_list, A_0_list, 
 
 
   #Right now, we're assuming first period is 1. May want to relax this
-  if(gMin == tMin){return(seConservative)}
+  if(gMin == tMin){
+    return(seConservative)
+    }
 
   #Create matrix M that selects the rows of S_g correspondign with t< g_min
-  M <- matrix(0, nrow = gMin -tMin, ncol = NCOL(S_g_list[[1]]) )
+  M <- matrix(0, nrow = gMin -tMin,
+              ncol = NCOL(S_g_list[[1]]) )
   diag(M) <- 1
 
 
 
-  betahat_g_list <- purrr::pmap( .l = list( A_theta_list[g_geq_gMin_index], A_0_list[g_geq_gMin_index], S_g_list[g_geq_gMin_index]  ),
-                          .f = function(A_theta,A_0,S_g){ MASS::ginv(M %*% S_g %*% t(M)) %*% M %*% S_g %*% t(A_theta) } )
+  betahat_g_list <- purrr::pmap( .l = list( A_theta_list[g_geq_gMin_index],
+                                            A_0_list[g_geq_gMin_index],
+                                            S_g_list[g_geq_gMin_index]  ),
+                                 .f = function(A_theta,A_0,S_g){
+                                   MASS::ginv(M %*% S_g %*% t(M)) %*% M %*% S_g %*% t(A_theta)
+                                   }
+                                 )
 
-  betahat_g_sum <- base::Reduce(x = betahat_g_list, f = '+')
+  betahat_g_sum <- base::Reduce(x = betahat_g_list,
+                                f = '+')
 
   #Compute the average of M S_g M' for all g <= t_min
-  avg_MSM_list <- purrr::map(.x = S_g_list[g_geq_gMin_index], .f = function(S){ M %*% S %*% t(M) } )
-  avg_MSM <- base::Reduce(x = avg_MSM_list, f='+') / length(avg_MSM_list)
+  avg_MSM_list <- purrr::map(.x = S_g_list[g_geq_gMin_index],
+                             .f = function(S){ M %*% S %*% t(M) } )
+  avg_MSM <- base::Reduce(x = avg_MSM_list,
+                          f='+') / length(avg_MSM_list)
 
   #calculate the adjustment factor for the conservative variance
-  N <- purrr::reduce(N_g_list, sum)
+  N <- purrr::reduce(N_g_list,
+                     sum)
   adjustmentFactor <- 1/N * t(betahat_g_sum) %*% avg_MSM %*% betahat_g_sum
 
 
@@ -186,8 +310,11 @@ compute_se_Thetahat_beta <- function(beta, Ybar_g_list, A_theta_list, A_0_list, 
 }
 
 #' @export
-#' @description This function creates the list of A_0 matrices for Xhat corresponding with all possible comparisons of cohorts before they are treated
-create_A0_list <- function(g_list, t_list){
+#' @title create_A0_list
+#' @description \code{create_A0_list} creates the list of A_0 matrices for Xhat corresponding with all possible
+#' comparisons of cohorts before they are treated
+create_A0_list <- function(g_list,
+                           t_list){
 
   createAtilde0_g <- function(g_index){
     g <- g_list[g_index]
@@ -200,25 +327,31 @@ create_A0_list <- function(g_list, t_list){
 
     #Otherwise, Atilde is a matrix with rows= # periods before g and T columns.
     # It has 1s on the diagonal and 0s elsewhere. I.e. Atilde selects rows of Y corresponding with t<g
-    Atilde0_g <- matrix(0, nrow = length(t_less_than_g_index), ncol = length(t_list))
+    Atilde0_g <- matrix(0,
+                        nrow = length(t_less_than_g_index),
+                        ncol = length(t_list))
     diag(Atilde0_g) <- 1
 
     return(Atilde0_g)
   }
 
-  Atilde0_list <- purrr::map(.x = 1:(length(g_list)-1), .f = createAtilde0_g)
+  Atilde0_list <- purrr::map(.x = 1:(length(g_list)-1),
+                             .f = createAtilde0_g)
 
   A0_list <- purrr::map(.x = 1:length(Atilde0_list),
-                 .f = function(i){
-                   #A0_g is a block matrix that stacks the Atilde_g's (for g < gmax) and multiplies by 0 for all g' \neq g
-                   Atilde_times_indicator_list <- purrr::map(.x = 1:length(Atilde0_list), .f = ~(i == .x) * Atilde0_list[[.x]]  )
-                   A0 <- purrr::reduce(Atilde_times_indicator_list, rbind)
-                   return(A0)
-                 }  )
+                        .f = function(i){
+                          #A0_g is a block matrix that stacks the Atilde_g's (for g < gmax) and multiplies by 0 for all g' \neq g
+                          Atilde_times_indicator_list <- purrr::map(.x = 1:length(Atilde0_list),
+                                                                    .f = ~(i == .x) * Atilde0_list[[.x]]  )
+                          A0 <- purrr::reduce(Atilde_times_indicator_list,
+                                              rbind)
+                          return(A0)
+                        }  )
   if(length(A0_list) == 1){
     A0_gmax <- -A0_list[[1]]}
   else{
-    A0_gmax <- -Reduce(x = A0_list, f = '+')
+    A0_gmax <- -base::Reduce(x = A0_list,
+                       f = '+')
   }
 
   A0_list[[length(A0_list) + 1]] <- A0_gmax
@@ -233,18 +366,31 @@ create_A0_list <- function(g_list, t_list){
 sum_of_lists <- function(.l){
   #Given a list of lists all of the same length, this sums all the elements
   if(length(.l) == 1){return(.l)}
-  results <- purrr::reduce(.x = .l, .f = function(l1,l2){purrr::map2(l1,l2, .f = ~.x + .y)} )
+  results <- purrr::reduce(.x = .l,
+                           .f = function(l1,
+                                         l2){
+                             purrr::map2(l1,
+                                         l2,
+                                         .f = ~.x + .y)
+                             }
+                           )
   return(results)
 }
 
 scalar_product_lists <- function(c,.l){
   #Takes a constant c and list .l, returns a list with c times each element of l
-  results <- purrr::map(.x = .l, .f = ~c * .x)
+  results <- purrr::map(.x = .l,
+                        .f = ~c * .x)
   return(results)
 }
 
 
-create_Atheta_list_for_ATE_tg <- function(t, g, g_list, t_list, N_g_list, showWarnings =T){
+create_Atheta_list_for_ATE_tg <- function(t,
+                                          g,
+                                          g_list,
+                                          t_list,
+                                          N_g_list,
+                                          showWarnings = TRUE){
   numPeriods <- length(t_list)
   if(t < g & showWarnings){warning("t is less than g. ATE(t,g) is zero by assumption")}
   if(t >= max(g_list)){stop("t is greater than max(g)-1; ATE(t,g) is not identified.")}
@@ -270,16 +416,20 @@ create_Atheta_list_for_ATE_tg <- function(t, g, g_list, t_list, N_g_list, showWa
   #Create a list of which cohorts are eligible to be controls for each of the cohorts
   #This will be a null list if not eligible
   control_cohort_indices <- purrr::map(.x = 1:length(g_list),
-                                .f = ~ which(g_list > t ))
+                                       .f = ~ which(g_list > t ))
 
-  N_control_cohorts <- purrr::map_dbl(.x = control_cohort_indices, .f = ~ sum(unlist(N_g_list[.x])) )
+  N_control_cohorts <- purrr::map_dbl(.x = control_cohort_indices,
+                                      .f = ~ sum(unlist(N_g_list[.x])) )
 
-  createControlWeights_helper <- function(control_g_index, treated_g_index = treated_cohort_index){
+  createControlWeights_helper <- function(control_g_index,
+                                          treated_g_index = treated_cohort_index){
     #This function creates the weights for the cohort in control_g_index as a controls for the cohort in treated_g_index
-    control_weights <- matrix(0,nrow =1, ncol = numPeriods)
+    control_weights <- matrix(0, nrow =1, ncol = numPeriods)
 
     #If control_g is not a valid control, return 0
-    if(! (control_g_index %in% control_cohort_indices[[treated_g_index]]) ){return(control_weights)}
+    if(! (control_g_index %in% control_cohort_indices[[treated_g_index]]) ){
+      return(control_weights)
+      }
 
     g_treated <- g_list[treated_g_index]
     N_g_control <- N_g_list[[control_g_index]]
@@ -287,7 +437,7 @@ create_Atheta_list_for_ATE_tg <- function(t, g, g_list, t_list, N_g_list, showWa
 
     t_control_index <- which(t_list == t)
 
-    control_weights[t_control_index] <- -N_g_control / N_control_cohorts[treated_g_index]
+    control_weights[t_control_index] <- - N_g_control / N_control_cohorts[treated_g_index]
     return(control_weights)
   }
 
@@ -299,15 +449,22 @@ create_Atheta_list_for_ATE_tg <- function(t, g, g_list, t_list, N_g_list, showWa
   #   return(controlWeights_g)
   # }
 
-  A_theta_treated_list <- purrr::map(.x = 1:length(g_list), A_theta_g_treated_fn)
-  A_theta_control_list <- purrr::map(.x = 1:length(g_list), createControlWeights_helper )
-  A_theta_list <- purrr::map2(.x = A_theta_treated_list, .y = A_theta_control_list, .f = ~ .x + .y)
+  A_theta_treated_list <- purrr::map(.x = 1:length(g_list),
+                                     A_theta_g_treated_fn)
+  A_theta_control_list <- purrr::map(.x = 1:length(g_list),
+                                     createControlWeights_helper )
+  A_theta_list <- purrr::map2(.x = A_theta_treated_list,
+                              .y = A_theta_control_list,
+                              .f = ~ .x + .y)
   return(A_theta_list)
 }
 
 
 
-create_Atheta_list_for_event_study <- function(eventTime, g_list, t_list, N_g_list){
+create_Atheta_list_for_event_study <- function(eventTime,
+                                               g_list,
+                                               t_list,
+                                               N_g_list){
 
   #Create A_thetas for an ``event-study'' coefficient at lag eventTime
   # This is the average treatment effects for units eventTime periods after first being treated
@@ -315,15 +472,25 @@ create_Atheta_list_for_event_study <- function(eventTime, g_list, t_list, N_g_li
   # Cohorts are weighted by the cohort size (N_g)
 
   maxG <- max(g_list)
-  eligible_cohort_index <- which( (g_list + eventTime < maxG ) & (g_list + eventTime <= max(t_list) ) )
+  eligible_cohort_index <- which( ((g_list + eventTime) < maxG ) & ((g_list + eventTime) <= max(t_list) ) )
 
-  if(length(eligible_cohort_index) == 0){stop("There are no comparison cohorts for the given eventTime")}
+  if(length(eligible_cohort_index) == 0){
+    stop("There are no comparison cohorts for the given eventTime")
+    }
 
-  N_eligible <- Reduce(x = N_g_list[eligible_cohort_index], sum)
+  N_eligible <- base::Reduce(x = N_g_list[eligible_cohort_index],
+                             sum)
 
   A_theta_lists <- purrr::map(.x = eligible_cohort_index,
                               .f = ~ scalar_product_lists(N_g_list[[.x]]/N_eligible ,
-                                                          create_Atheta_list_for_ATE_tg(t =g_list[.x]+eventTime, g = g_list[.x], g_list = g_list ,t_list = t_list, N_g_list = N_g_list) ) )
+                                                          create_Atheta_list_for_ATE_tg(t =g_list[.x]+eventTime,
+                                                                                        g = g_list[.x],
+                                                                                        g_list = g_list,
+                                                                                        t_list = t_list,
+                                                                                        N_g_list = N_g_list
+                                                                                        )
+                                                          )
+                              )
 
   if(length(eligible_cohort_index) == 1){
     A_theta_list <- A_theta_lists[[1]]
@@ -336,14 +503,24 @@ create_Atheta_list_for_event_study <- function(eventTime, g_list, t_list, N_g_li
 
 
 
-create_Atheta_list_for_ATE_calendar_t <- function(t, g_list, t_list, N_g_list){
+create_Atheta_list_for_ATE_calendar_t <- function(t,
+                                                  g_list,
+                                                  t_list,
+                                                  N_g_list){
 
   treated_by_t_indices <- which(g_list <= t)
   N_total_treated <- sum( unlist(N_g_list[treated_by_t_indices]) )
 
   A_theta_lists <- purrr::map(.x = treated_by_t_indices,
-                       .f = ~ scalar_product_lists(N_g_list[[.x]]/N_total_treated ,
-                                                   create_Atheta_list_for_ATE_tg(t =t, g = g_list[.x], g_list = g_list ,t_list = t_list, N_g_list = N_g_list) ) )
+                              .f = ~ scalar_product_lists(N_g_list[[.x]]/N_total_treated ,
+                                                          create_Atheta_list_for_ATE_tg(t =t,
+                                                                                        g = g_list[.x],
+                                                                                        g_list = g_list ,
+                                                                                        t_list = t_list,
+                                                                                        N_g_list = N_g_list
+                                                                                        )
+                                                          )
+                              )
 
   if(length(treated_by_t_indices) == 1){
     A_theta_list <- A_theta_lists[[1]]
@@ -356,14 +533,24 @@ create_Atheta_list_for_ATE_calendar_t <- function(t, g_list, t_list, N_g_list){
 
 
 
-create_Atheta_list_for_ATE_cohort_g <- function(g, g_list, t_list, N_g_list){
+create_Atheta_list_for_ATE_cohort_g <- function(g,
+                                                g_list,
+                                                t_list,
+                                                N_g_list){
 
   treated_period_indices <- which(t_list >= g & t_list < max(g_list))
   T_treated <- length( t_list[treated_period_indices] )
 
   A_theta_lists <- purrr::map(.x = treated_period_indices,
-                       .f = ~ scalar_product_lists(1/T_treated ,
-                                                   create_Atheta_list_for_ATE_tg(t =t_list[.x], g = g, g_list = g_list ,t_list = t_list, N_g_list = N_g_list) ) )
+                              .f = ~ scalar_product_lists(1/T_treated ,
+                                                          create_Atheta_list_for_ATE_tg(t =t_list[.x],
+                                                                                        g = g,
+                                                                                        g_list = g_list ,
+                                                                                        t_list = t_list,
+                                                                                        N_g_list = N_g_list
+                                                                                        )
+                                                          )
+                              )
 
   if(T_treated == 1){
     A_theta_list <- A_theta_lists[[1]]
@@ -377,15 +564,23 @@ create_Atheta_list_for_ATE_cohort_g <- function(g, g_list, t_list, N_g_list){
 
 
 
-create_Atheta_list_for_cohort_average_ATE <- function(g_list, t_list, N_g_list){
+create_Atheta_list_for_cohort_average_ATE <- function(g_list,
+                                                      t_list,
+                                                      N_g_list){
 
-  g_eligible_index <-  which(g_list < max(g_list) & g_list <= max(t_list))
+  g_eligible_index <-  which((g_list < max(g_list)) & (g_list <= max(t_list)))
 
   N_total_eligible <- sum(unlist(N_g_list[g_eligible_index]))
 
   A_theta_lists <- purrr::map(.x = g_eligible_index,
-                       .f = ~ scalar_product_lists(as.numeric(N_g_list[[.x]])/N_total_eligible,
-                                                   create_Atheta_list_for_ATE_cohort_g(g = g_list[.x], g_list = g_list ,t_list = t_list, N_g_list = N_g_list) ) )
+                              .f = ~ scalar_product_lists(as.numeric(N_g_list[[.x]])/N_total_eligible,
+                                                          create_Atheta_list_for_ATE_cohort_g(g = g_list[.x],
+                                                                                              g_list = g_list ,
+                                                                                              t_list = t_list,
+                                                                                              N_g_list = N_g_list
+                                                                                              )
+                                                          )
+                              )
 
 
   A_theta_list <- sum_of_lists(A_theta_lists)
@@ -396,15 +591,23 @@ create_Atheta_list_for_cohort_average_ATE <- function(g_list, t_list, N_g_list){
 
 
 
-create_Atheta_list_for_calendar_average_ATE <- function(g_list, t_list, N_g_list){
+create_Atheta_list_for_calendar_average_ATE <- function(g_list,
+                                                        t_list,
+                                                        N_g_list){
 
-  t_eligible_index <-  which(t_list >= min(g_list) & t_list < max(g_list))
+  t_eligible_index <-  which((t_list >= min(g_list)) & (t_list < max(g_list)))
 
   T_eligible <- length(t_eligible_index)
 
   A_theta_lists <- purrr::map(.x = t_eligible_index,
-                       .f = ~ scalar_product_lists(1/T_eligible,
-                                                   create_Atheta_list_for_ATE_calendar_t(t = t_list[.x], g_list = g_list ,t_list = t_list, N_g_list = N_g_list) ) )
+                              .f = ~ scalar_product_lists(1/T_eligible,
+                                                          create_Atheta_list_for_ATE_calendar_t(t = t_list[.x],
+                                                                                                g_list = g_list ,
+                                                                                                t_list = t_list,
+                                                                                                N_g_list = N_g_list
+                                                                                                )
+                                                          )
+                              )
 
 
   A_theta_list <- sum_of_lists(A_theta_lists)
@@ -418,17 +621,24 @@ create_Atheta_list_for_simple_average_ATE <- function(g_list, t_list, N_g_list){
 
   #Create a df with all the (g,t) pairs for which ATE is identified
   gt_df <- purrr::cross_df( list(g = g_list, t = t_list) )
-  gt_df <- gt_df %>% filter(t >= g, t< max(g_list))
+  gt_df <- gt_df %>% dplyr::filter(t >= g, t< max(g_list))
 
   #Join in N_g for each of these pairs
-  gt_df <- left_join( gt_df, data.frame(g= g_list, N_g = unlist(N_g_list)), by = "g")
+  gt_df <- dplyr::left_join( gt_df, data.frame(g= g_list, N_g = unlist(N_g_list)), by = "g")
 
   #Calculate sum of N_g for all eligible (t,g) pairs
   N_total <- sum(gt_df$N_g)
 
   A_theta_lists <- purrr::map(.x = 1:NROW(gt_df),
-                       .f = ~ scalar_product_lists(gt_df$N_g[.x]/N_total,
-                                                   create_Atheta_list_for_ATE_tg(t = gt_df$t[.x], g= gt_df$g[.x], g_list = g_list ,t_list = t_list, N_g_list = N_g_list) ) )
+                              .f = ~ scalar_product_lists(gt_df$N_g[.x]/N_total,
+                                                          create_Atheta_list_for_ATE_tg(t = gt_df$t[.x],
+                                                                                        g= gt_df$g[.x],
+                                                                                        g_list = g_list ,
+                                                                                        t_list = t_list,
+                                                                                        N_g_list = N_g_list
+                                                                                        )
+                                                          )
+                              )
 
 
   A_theta_list <- sum_of_lists(A_theta_lists)
@@ -447,15 +657,22 @@ create_Atheta_list_for_simple_average_ATE <- function(g_list, t_list, N_g_list){
 #' @param df A data frame containing panel data with the variables y (an outcome), i (an individual identifier), t (the period in which the outcome is observe), g (the period in which i is first treated, with Inf denoting never treated)
 #' @param estimand The estimand to be calculated: "simple" averages all treated (t,g) combinations with weights proportional to N_g; "cohort" averages the ATEs for each cohort g, and then takes an N_g-weighted average across g; "calendar" averages ATEs for each time period, weighted by N_g for treated units, and then averages across time. "EventStudy" returns the average effect at the ''event-time'' given in the parameter EventTime.  The parameter can be left blank if a custom parameter is provided in A_theta_list
 #' @param A_theta_list This parameter allows for specifying a custom estimand, and should be left as NULL if estimand is specified. It is a list of matrices A_theta_g so that the parameter of interest is sum_g A_theta_g Ybar_g, where Ybar_g = 1/N sum_i Y_i(g)
-#' @param A_0_list This parameter allow for specifying the matrices used to construct the Xhat vector of pre-treatment differences. If left NULL, the default is to use the scalar set of controls used in Callaway and Sant'Anna. If use_DiD_A0 = F, then it uses the full vector possible comparisons of (g,g') in periods t<g,g'.
+#' @param A_0_list This parameter allow for specifying the matrices used to construct the Xhat vector of pre-treatment differences. If left NULL, the default is to use the scalar set of controls used in Callaway and Sant'Anna. If use_DiD_A0 = FALSE, then it uses the full vector possible comparisons of (g,g') in periods t<g,g'.
 #' @param eventTime If using estimand = "eventstudy", specify what eventTime you want the event-study parameter for. The default is 0, the period in which treatment occurs
 #' @param beta Optional. A coefficient to use for covariate adjustment. If not specified, the plug-in optimal coefficient is used. beta =0 corresponds with the simple difference-in-means. beta = 1 corresponds with the Callaway and Sant'Anna estimator when using the default value of use_DiD_A0=T.
-#' @param betaType. An optional parameter describing the type of covariate adjustment used. Defaults to "betaStar" if the efficient estimator is used.
 #' @param  use_DiD_A0 If this parameter is true, then Xhat corresponds with the scalar used by Callaway and Sant'Anna, so the Callaway and Sant'Anna estimator corresponds with beta=1. If it is false, the Xhat is a vector with all possible comparisons of pairs of cohorts before either is treated. The latter option should only be used when the number of possible comparisons is small relative to sample size.
-#' @return df A data.frame containing: thetahat (the point estimate), se (the standard error), se_conservative (the Neyman standard error), and betaType
-calculate_adjusted_estimator_and_se <- function(df, estimand =NULL, A_theta_list = NULL, A_0_list = NULL, eventTime = 0, beta = NULL, betaType = ifelse( is.null(beta), "betaStar", "Custom"), refine_S_g = F, use_DiD_A0 =ifelse(is.null(A_0_list),T,F)){
+#' @return df A data.frame containing: thetahat (the point estimate), se (the standard error), and se_neyman (the Neyman standard error).
+staggered <- function(df,
+                      estimand = NULL,
+                      A_theta_list = NULL,
+                      A_0_list = NULL,
+                      eventTime = 0,
+                      beta = NULL,
+                      use_DiD_A0 = ifelse(is.null(A_0_list),
+                                          TRUE,
+                                          FALSE)){
 
-  g_level_summaries <- compute_g_level_summaries(df, refine_S_g = refine_S_g)
+  g_level_summaries <- compute_g_level_summaries(df)
   Ybar_g_list <- g_level_summaries$Ybar_g_List
   S_g_list <- g_level_summaries$S_g_List
   N_g_list <- g_level_summaries$N_g_List
@@ -465,57 +682,111 @@ calculate_adjusted_estimator_and_se <- function(df, estimand =NULL, A_theta_list
   #If estimand is provided, calculate the appropriate A_theta_list
   if(!is.null(estimand)){
     if(estimand == "simple"){
-      A_theta_list <- create_Atheta_list_for_simple_average_ATE(g_list = g_list, t_list = t_list,N_g_list = N_g_list)
+      A_theta_list <- create_Atheta_list_for_simple_average_ATE(g_list = g_list,
+                                                                t_list = t_list,
+                                                                N_g_list = N_g_list)
     }else if(estimand == "cohort"){
-      A_theta_list <- create_Atheta_list_for_cohort_average_ATE(g_list = g_list, t_list = t_list,N_g_list = N_g_list)
+      A_theta_list <- create_Atheta_list_for_cohort_average_ATE(g_list = g_list,
+                                                                t_list = t_list,
+                                                                N_g_list = N_g_list)
     }else if(estimand == "calendar"){
-      A_theta_list <- create_Atheta_list_for_calendar_average_ATE(g_list = g_list, t_list = t_list,N_g_list = N_g_list)
+      A_theta_list <- create_Atheta_list_for_calendar_average_ATE(g_list = g_list,
+                                                                  t_list = t_list,
+                                                                  N_g_list = N_g_list)
     }else if(estimand == "eventstudy"){
-      A_theta_list <- create_Atheta_list_for_event_study(eventTime = eventTime, g_list = g_list, t_list = t_list,N_g_list = N_g_list)
+      A_theta_list <- create_Atheta_list_for_event_study(eventTime = eventTime,
+                                                         g_list = g_list,
+                                                         t_list = t_list,
+                                                         N_g_list = N_g_list)
     }
   }
   #If no valid estimand is provided and no A_theta_list, throw and error
-  if(is.null(A_theta_list)){stop("Estimand must be one of simple, cohort, calendar, or eventstudy; or custom A_theta_list must be provided")}
+  if(is.null(A_theta_list)){
+    stop("Estimand must be one of simple, cohort, calendar, or eventstudy; or custom A_theta_list must be provided")
+    }
 
   #Create A_0_list if a custom A_0_list is not provided
-  if(is.null(A_0_list) & use_DiD_A0==F){
-    A_0_list <- create_A0_list(g_list = g_list, t_list = t_list)
+  if(is.null(A_0_list) & (use_DiD_A0==FALSE)){
+    A_0_list <- create_A0_list(g_list = g_list,
+                               t_list = t_list)
   }
 
   #If use_DiD_A0, use only the A0's associated with the DiD estimand
   if(use_DiD_A0){
 
-    if(is.null(estimand)){stop("If use_DiD_A0 =T, you must provide an estimand.")}
+    if(is.null(estimand)){
+      stop("If use_DiD_A0 =TRUE, you must provide an estimand.")
+      }
 
     if(estimand == "simple"){
-      A_0_list <- create_A0_list_for_simple_average_ATE(g_list = g_list, t_list = t_list,N_g_list = N_g_list)
+      A_0_list <- create_A0_list_for_simple_average_ATE(g_list = g_list,
+                                                        t_list = t_list,
+                                                        N_g_list = N_g_list)
     }else if(estimand == "cohort"){
-      A_0_list <- create_A0_list_for_cohort_average_ATE(g_list = g_list, t_list = t_list,N_g_list = N_g_list)
+      A_0_list <- create_A0_list_for_cohort_average_ATE(g_list = g_list,
+                                                        t_list = t_list,
+                                                        N_g_list = N_g_list)
     }else if(estimand == "calendar"){
-      A_0_list <- create_A0_list_for_calendar_average_ATE(g_list = g_list, t_list = t_list,N_g_list = N_g_list)
+      A_0_list <- create_A0_list_for_calendar_average_ATE(g_list = g_list,
+                                                          t_list = t_list,
+                                                          N_g_list = N_g_list)
     }else if(estimand == "eventstudy"){
-      A_0_list <- create_A0_list_for_event_study(eventTime = eventTime, g_list = g_list, t_list = t_list,N_g_list = N_g_list)
+      A_0_list <- create_A0_list_for_event_study(eventTime = eventTime,
+                                                 g_list = g_list,
+                                                 t_list = t_list,
+                                                 N_g_list = N_g_list)
     }
   }
 
 
-  Xvar_list <- purrr::pmap(.l = list(A_0_list, S_g_list, N_g_list) , .f = function(A0,S,N){ return(1/N * eigenMapMatMult( eigenMapMatMult(A0,S) , t(A0) ) ) } )
-#  Xvar_list <- purrr::pmap(.l = list(A_0_list, S_g_list, N_g_list) , .f = function(A0,S,N){ return(1/N * A0 %*%S %*% t(A0) )  } )
+  Xvar_list <- purrr::pmap(.l = list(A_0_list, S_g_list, N_g_list) ,
+                           .f = function(A0,S,N){
+                             return(1/N * eigenMapMatMult( eigenMapMatMult(A0,S) , t(A0) ) )
+                             }
+                           )
+  #  Xvar_list <- purrr::pmap(.l = list(A_0_list, S_g_list, N_g_list) , .f = function(A0,S,N){ return(1/N * A0 %*%S %*% t(A0) )  } )
 
   if(is.null(beta)){
-    beta <- compute_Betastar(Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_list, Xvar_list = Xvar_list)
+    beta <- compute_Betastar(Ybar_g_list,
+                             A_theta_list,
+                             A_0_list,
+                             S_g_list,
+                             N_g_list,
+                             Xvar_list = Xvar_list)
   }
 
   #If beta =0, convert beta to the appropriate length
   if(length(beta) == 1 & beta == 0){
-    beta = matrix(0,dim(A_0_list[[1]])[1])
+    beta = matrix(0, dim(A_0_list[[1]])[1])
   }
 
-  thetahat <- compute_Thetahat_beta(beta = beta,Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_list, Xvar_list = Xvar_list)
-  se_conservative <- compute_se_Thetahat_beta_conservative(beta = beta,Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_list, Xvar_list = Xvar_list)
-  se <- compute_se_Thetahat_beta(beta = beta,Ybar_g_list, A_theta_list, A_0_list, S_g_list, N_g_list, g_list, t_list, Xvar_list = Xvar_list)
+  thetahat <- compute_Thetahat_beta(beta = beta,
+                                    Ybar_g_list,
+                                    A_theta_list,
+                                    A_0_list,
+                                    S_g_list,
+                                    N_g_list,
+                                    Xvar_list = Xvar_list)
+  se_neyman <- compute_se_Thetahat_beta_conservative(beta = beta,
+                                                           Ybar_g_list,
+                                                           A_theta_list,
+                                                           A_0_list,
+                                                           S_g_list,
+                                                           N_g_list,
+                                                           Xvar_list = Xvar_list)
+  se <- compute_se_Thetahat_beta(beta = beta,
+                                 Ybar_g_list,
+                                 A_theta_list,
+                                 A_0_list,
+                                 S_g_list,
+                                 N_g_list,
+                                 g_list,
+                                 t_list,
+                                 Xvar_list = Xvar_list)
 
-  df <- data.frame(thetahat = thetahat, se = se, se_conservative = se_conservative, betaType = betaType)
+  df <- data.frame(thetahat = thetahat,
+                   se = se,
+                   se_neyman = se_neyman)
 
   return(df)
 }
