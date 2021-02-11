@@ -30,7 +30,7 @@ staggered(
 \item{use_DiD_A0}{If this parameter is true, then Xhat corresponds with the scalar used by Callaway and Sant'Anna, so the Callaway and Sant'Anna estimator corresponds with beta=1. If it is false, the Xhat is a vector with all possible comparisons of pairs of cohorts before either is treated. The latter option should only be used when the number of possible comparisons is small relative to sample size.}
 }
 \value{
-df A data.frame containing: thetahat (the point estimate), se (the standard error), and se_neyman (the Neyman standard error).
+df A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error).
 }
 \description{
 This functions calculates the efficient estimator for staggered rollout designs proposed by Roth and Sant'Anna.

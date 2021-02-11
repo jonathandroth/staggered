@@ -661,7 +661,7 @@ create_Atheta_list_for_simple_average_ATE <- function(g_list, t_list, N_g_list){
 #' @param eventTime If using estimand = "eventstudy", specify what eventTime you want the event-study parameter for. The default is 0, the period in which treatment occurs
 #' @param beta Optional. A coefficient to use for covariate adjustment. If not specified, the plug-in optimal coefficient is used. beta =0 corresponds with the simple difference-in-means. beta = 1 corresponds with the Callaway and Sant'Anna estimator when using the default value of use_DiD_A0=T.
 #' @param  use_DiD_A0 If this parameter is true, then Xhat corresponds with the scalar used by Callaway and Sant'Anna, so the Callaway and Sant'Anna estimator corresponds with beta=1. If it is false, the Xhat is a vector with all possible comparisons of pairs of cohorts before either is treated. The latter option should only be used when the number of possible comparisons is small relative to sample size.
-#' @return df A data.frame containing: thetahat (the point estimate), se (the standard error), and se_neyman (the Neyman standard error).
+#' @return df A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error).
 staggered <- function(df,
                       estimand = NULL,
                       A_theta_list = NULL,
@@ -784,7 +784,7 @@ staggered <- function(df,
                                  t_list,
                                  Xvar_list = Xvar_list)
 
-  df <- data.frame(thetahat = thetahat,
+  df <- data.frame(estimate = thetahat,
                    se = se,
                    se_neyman = se_neyman)
 

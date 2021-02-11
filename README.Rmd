@@ -56,17 +56,17 @@ We now can call the function calculate_adjusted_estimator_and_se to calculate th
 
 ```{r}
 #Calculate efficient estimator for the simple weighted average
-staggered(df = df, estimand = "simple") %>% select(thetahat, se)
+staggered(df = df, estimand = "simple") %>% select(estimate, se)
 ```
 
 ```{r}
 #Calculate efficient estimator for the cohort weighted average
-staggered(df = df, estimand = "cohort") %>% select(thetahat, se)
+staggered(df = df, estimand = "cohort") %>% select(estimate, se)
 ```
 
 ```{r}
 #Calculate efficient estimator for the calendar weighted average
-staggered(df = df, estimand = "calendar") %>% select(thetahat, se)
+staggered(df = df, estimand = "calendar") %>% select(estimate, se)
 ```
 
 
@@ -81,14 +81,14 @@ eventPlotResults <-
                         df = df, estimand = "eventstudy", eventTime = .x) %>% 
                       mutate(eventTime = .x) )
                    
-eventPlotResults %>% select(eventTime, thetahat, se) %>% head()
+eventPlotResults %>% select(eventTime, estimate, se) %>% head()
 ```
 ```{r}
 #Create event-study plot from the results of the event-study
 eventPlotResults %>% 
-    mutate(ymin_ptwise = thetahat + 1.96*se,
-           ymax_ptwise = thetahat - 1.96*se)%>%
-  ggplot(aes(x=eventTime, y =thetahat)) +
+    mutate(ymin_ptwise = estimate + 1.96*se,
+           ymax_ptwise = estimate - 1.96*se)%>%
+  ggplot(aes(x=eventTime, y =estimate)) +
   geom_pointrange(aes(ymin = ymin_ptwise, ymax = ymax_ptwise))+ 
   geom_hline(yintercept =0) +
   xlab("Event Time") + ylab("Estimate") +

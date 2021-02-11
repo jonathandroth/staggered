@@ -78,22 +78,22 @@ aggregation schemes).
 
 ``` r
 #Calculate efficient estimator for the simple weighted average
-staggered(df = df, estimand = "simple") %>% select(thetahat, se)
-#>       thetahat          se
+staggered(df = df, estimand = "simple") %>% select(estimate, se)
+#>       estimate          se
 #> 1 -0.001126981 0.002115194
 ```
 
 ``` r
 #Calculate efficient estimator for the cohort weighted average
-staggered(df = df, estimand = "cohort") %>% select(thetahat, se)
-#>       thetahat          se
+staggered(df = df, estimand = "cohort") %>% select(estimate, se)
+#>       estimate          se
 #> 1 -0.001084689 0.002261011
 ```
 
 ``` r
 #Calculate efficient estimator for the calendar weighted average
-staggered(df = df, estimand = "calendar") %>% select(thetahat, se)
-#>      thetahat         se
+staggered(df = df, estimand = "calendar") %>% select(estimate, se)
+#>      estimate         se
 #> 1 -0.00187198 0.00255863
 ```
 
@@ -110,8 +110,8 @@ eventPlotResults <-
                         df = df, estimand = "eventstudy", eventTime = .x) %>% 
                       mutate(eventTime = .x) )
                    
-eventPlotResults %>% select(eventTime, thetahat, se) %>% head()
-#>   eventTime      thetahat          se
+eventPlotResults %>% select(eventTime, estimate, se) %>% head()
+#>   eventTime      estimate          se
 #> 1         0  3.083575e-04 0.002645327
 #> 2         1  2.591678e-03 0.002614563
 #> 3         2 -4.872562e-05 0.002622640
@@ -123,9 +123,9 @@ eventPlotResults %>% select(eventTime, thetahat, se) %>% head()
 ``` r
 #Create event-study plot from the results of the event-study
 eventPlotResults %>% 
-    mutate(ymin_ptwise = thetahat + 1.96*se,
-           ymax_ptwise = thetahat - 1.96*se)%>%
-  ggplot(aes(x=eventTime, y =thetahat)) +
+    mutate(ymin_ptwise = estimate + 1.96*se,
+           ymax_ptwise = estimate - 1.96*se)%>%
+  ggplot(aes(x=eventTime, y =estimate)) +
   geom_pointrange(aes(ymin = ymin_ptwise, ymax = ymax_ptwise))+ 
   geom_hline(yintercept =0) +
   xlab("Event Time") + ylab("Estimate") +
