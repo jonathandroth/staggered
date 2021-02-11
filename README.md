@@ -4,7 +4,6 @@
 # staggered
 
 <!-- badges: start -->
-
 <!-- badges: end -->
 
 This packages computes the efficient estimator for settings with
@@ -52,6 +51,7 @@ library(dplyr) #load dplyr for data manipulation
 #> 
 #>     intersect, setdiff, setequal, union
 library(ggplot2) #load ggplot2 for plotting the results
+#> Warning: package 'ggplot2' was built under R version 4.0.2
 library(purrr)
 
 df <- staggered::pj_officer_level_balanced #load the officer data
@@ -78,21 +78,21 @@ aggregation schemes).
 
 ``` r
 #Calculate efficient estimator for the simple weighted average
-calculate_adjusted_estimator_and_se(df = df, estimand = "simple") %>% select(thetahat, se)
+staggered(df = df, estimand = "simple") %>% select(thetahat, se)
 #>       thetahat          se
 #> 1 -0.001126981 0.002115194
 ```
 
 ``` r
 #Calculate efficient estimator for the cohort weighted average
-calculate_adjusted_estimator_and_se(df = df, estimand = "cohort") %>% select(thetahat, se)
+staggered(df = df, estimand = "cohort") %>% select(thetahat, se)
 #>       thetahat          se
 #> 1 -0.001084689 0.002261011
 ```
 
 ``` r
 #Calculate efficient estimator for the calendar weighted average
-calculate_adjusted_estimator_and_se(df = df, estimand = "calendar") %>% select(thetahat, se)
+staggered(df = df, estimand = "calendar") %>% select(thetahat, se)
 #>      thetahat         se
 #> 1 -0.00187198 0.00255863
 ```
@@ -106,7 +106,7 @@ average-treatment effect at each lag since treatment.
 #Calculate event-study coefficients for the first 24 months (month 0 is instantaneous effect)
 eventPlotResults <- 
   purrr::map_dfr(.x = 0:23 , #compute event-time effects for first 24 months 
-                 .f = ~calculate_adjusted_estimator_and_se(
+                 .f = ~staggered(
                         df = df, estimand = "eventstudy", eventTime = .x) %>% 
                       mutate(eventTime = .x) )
                    
@@ -137,6 +137,6 @@ eventPlotResults %>%
 ### Other Estimators
 
 If instead of the plug-in efficient estimator, one wishes to calculate
-the simple difference-in-means or Callway and Sant’Anna estimator, one
+the simple difference-in-means or Callaway and Sant’Anna estimator, one
 can specify the argument beta=0 or beta=1, respectively, to the
 functions above.

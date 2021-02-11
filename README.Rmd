@@ -56,17 +56,17 @@ We now can call the function calculate_adjusted_estimator_and_se to calculate th
 
 ```{r}
 #Calculate efficient estimator for the simple weighted average
-calculate_adjusted_estimator_and_se(df = df, estimand = "simple") %>% select(thetahat, se)
+staggered(df = df, estimand = "simple") %>% select(thetahat, se)
 ```
 
 ```{r}
 #Calculate efficient estimator for the cohort weighted average
-calculate_adjusted_estimator_and_se(df = df, estimand = "cohort") %>% select(thetahat, se)
+staggered(df = df, estimand = "cohort") %>% select(thetahat, se)
 ```
 
 ```{r}
 #Calculate efficient estimator for the calendar weighted average
-calculate_adjusted_estimator_and_se(df = df, estimand = "calendar") %>% select(thetahat, se)
+staggered(df = df, estimand = "calendar") %>% select(thetahat, se)
 ```
 
 
@@ -77,7 +77,7 @@ We can also calculate an ``event-study'' that computes the average-treatment eff
 #Calculate event-study coefficients for the first 24 months (month 0 is instantaneous effect)
 eventPlotResults <- 
   purrr::map_dfr(.x = 0:23 , #compute event-time effects for first 24 months 
-                 .f = ~calculate_adjusted_estimator_and_se(
+                 .f = ~staggered(
                         df = df, estimand = "eventstudy", eventTime = .x) %>% 
                       mutate(eventTime = .x) )
                    
@@ -97,4 +97,4 @@ eventPlotResults %>%
 
 ### Other Estimators
 
-If instead of the plug-in efficient estimator, one wishes to calculate the simple difference-in-means or Callway and Sant'Anna estimator, one can specify the argument beta=0 or beta=1, respectively, to the functions above.
+If instead of the plug-in efficient estimator, one wishes to calculate the simple difference-in-means or Callaway and Sant'Anna estimator, one can specify the argument beta=0 or beta=1, respectively, to the functions above.
