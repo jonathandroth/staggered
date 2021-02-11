@@ -17,7 +17,7 @@ knitr::opts_chunk$set(
 <!-- badges: start -->
 <!-- badges: end -->
 
-This packages computes the efficient estimator for settings with randomized treatment timing, based on the theoretical results in [Roth and Sant'Anna (2021)](https://arxiv.org/pdf/2102.01291.pdf). If units are randomly (or quasi-randomly) assigned to begin treatment at different dates, the efficient estimator can potentially offer substantial gains over methods that only impose parallel trends. The package also allows for calculating the estimator of [Callaway and Sant'Anna (2020)](https://www.sciencedirect.com/science/article/pii/S0304407620303948?dgcid=author) and the simple-difference-in-means as special cases.
+The staggered package computes the efficient estimator for settings with randomized treatment timing, based on the theoretical results in [Roth and Sant'Anna (2021)](https://arxiv.org/pdf/2102.01291.pdf). If units are randomly (or quasi-randomly) assigned to begin treatment at different dates, the efficient estimator can potentially offer substantial gains over methods that only impose parallel trends. The package also allows for calculating the estimator of [Callaway and Sant'Anna (2020)](https://www.sciencedirect.com/science/article/pii/S0304407620303948?dgcid=author) and the simple-difference-in-means as special cases.
 
 ## Installation
 

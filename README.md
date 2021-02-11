@@ -7,7 +7,7 @@
 
 <!-- badges: end -->
 
-This packages computes the efficient estimator for settings with
+The staggered package computes the efficient estimator for settings with
 randomized treatment timing, based on the theoretical results in [Roth
 and Sant’Anna (2021)](https://arxiv.org/pdf/2102.01291.pdf). If units
 are randomly (or quasi-randomly) assigned to begin treatment at
