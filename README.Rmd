@@ -56,17 +56,17 @@ We now can call the function calculate_adjusted_estimator_and_se to calculate th
 
 ```{r}
 #Calculate efficient estimator for the simple weighted average
-staggered(df = df, estimand = "simple") %>% select(estimate, se)
+staggered(df = df, estimand = "simple")
 ```
 
 ```{r}
 #Calculate efficient estimator for the cohort weighted average
-staggered(df = df, estimand = "cohort") %>% select(estimate, se)
+staggered(df = df, estimand = "cohort") 
 ```
 
 ```{r}
 #Calculate efficient estimator for the calendar weighted average
-staggered(df = df, estimand = "calendar") %>% select(estimate, se)
+staggered(df = df, estimand = "calendar")
 ```
 
 
@@ -75,13 +75,9 @@ We can also calculate an ``event-study'' that computes the average-treatment eff
 
 ```{r}
 #Calculate event-study coefficients for the first 24 months (month 0 is instantaneous effect)
-eventPlotResults <- 
-  purrr::map_dfr(.x = 0:23 , #compute event-time effects for first 24 months 
-                 .f = ~staggered(
-                        df = df, estimand = "eventstudy", eventTime = .x) %>% 
-                      mutate(eventTime = .x) )
-                   
-eventPlotResults %>% select(eventTime, estimate, se) %>% head()
+eventPlotResults <- staggered(df = df, estimand = "eventstudy", eventTime = 0:23)
+  
+eventPlotResults %>% head()
 ```
 ```{r}
 #Create event-study plot from the results of the event-study

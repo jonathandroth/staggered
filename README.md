@@ -4,6 +4,7 @@
 # staggered
 
 <!-- badges: start -->
+
 <!-- badges: end -->
 
 This packages computes the efficient estimator for settings with
@@ -51,7 +52,6 @@ library(dplyr) #load dplyr for data manipulation
 #> 
 #>     intersect, setdiff, setequal, union
 library(ggplot2) #load ggplot2 for plotting the results
-#> Warning: package 'ggplot2' was built under R version 4.0.2
 library(purrr)
 
 df <- staggered::pj_officer_level_balanced #load the officer data
@@ -78,23 +78,23 @@ aggregation schemes).
 
 ``` r
 #Calculate efficient estimator for the simple weighted average
-staggered(df = df, estimand = "simple") %>% select(estimate, se)
-#>       estimate          se
-#> 1 -0.001126981 0.002115194
+staggered(df = df, estimand = "simple")
+#>       estimate          se   se_neyman
+#> 1 -0.001126981 0.002115194 0.002119248
 ```
 
 ``` r
 #Calculate efficient estimator for the cohort weighted average
-staggered(df = df, estimand = "cohort") %>% select(estimate, se)
-#>       estimate          se
-#> 1 -0.001084689 0.002261011
+staggered(df = df, estimand = "cohort") 
+#>       estimate          se   se_neyman
+#> 1 -0.001084689 0.002261011 0.002264876
 ```
 
 ``` r
 #Calculate efficient estimator for the calendar weighted average
-staggered(df = df, estimand = "calendar") %>% select(estimate, se)
-#>      estimate         se
-#> 1 -0.00187198 0.00255863
+staggered(df = df, estimand = "calendar")
+#>      estimate         se   se_neyman
+#> 1 -0.00187198 0.00255863 0.002561472
 ```
 
 ### Event-study Parameters
@@ -104,20 +104,16 @@ average-treatment effect at each lag since treatment.
 
 ``` r
 #Calculate event-study coefficients for the first 24 months (month 0 is instantaneous effect)
-eventPlotResults <- 
-  purrr::map_dfr(.x = 0:23 , #compute event-time effects for first 24 months 
-                 .f = ~staggered(
-                        df = df, estimand = "eventstudy", eventTime = .x) %>% 
-                      mutate(eventTime = .x) )
-                   
-eventPlotResults %>% select(eventTime, estimate, se) %>% head()
-#>   eventTime      estimate          se
-#> 1         0  3.083575e-04 0.002645327
-#> 2         1  2.591678e-03 0.002614563
-#> 3         2 -4.872562e-05 0.002622640
-#> 4         3  2.043434e-03 0.002715695
-#> 5         4  2.977076e-03 0.002653917
-#> 6         5  7.979656e-04 0.002721784
+eventPlotResults <- staggered(df = df, estimand = "eventstudy", eventTime = 0:23)
+  
+eventPlotResults %>% head()
+#>        estimate          se   se_neyman eventTime
+#> 1  3.083575e-04 0.002645327 0.002650957         0
+#> 2  2.591678e-03 0.002614563 0.002621513         1
+#> 3 -4.872562e-05 0.002622640 0.002623634         2
+#> 4  2.043434e-03 0.002715695 0.002720467         3
+#> 5  2.977076e-03 0.002653917 0.002659630         4
+#> 6  7.979656e-04 0.002721784 0.002727140         5
 ```
 
 ``` r

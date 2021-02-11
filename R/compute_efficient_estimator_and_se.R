@@ -658,10 +658,10 @@ create_Atheta_list_for_simple_average_ATE <- function(g_list, t_list, N_g_list){
 #' @param estimand The estimand to be calculated: "simple" averages all treated (t,g) combinations with weights proportional to N_g; "cohort" averages the ATEs for each cohort g, and then takes an N_g-weighted average across g; "calendar" averages ATEs for each time period, weighted by N_g for treated units, and then averages across time. "EventStudy" returns the average effect at the ''event-time'' given in the parameter EventTime.  The parameter can be left blank if a custom parameter is provided in A_theta_list
 #' @param A_theta_list This parameter allows for specifying a custom estimand, and should be left as NULL if estimand is specified. It is a list of matrices A_theta_g so that the parameter of interest is sum_g A_theta_g Ybar_g, where Ybar_g = 1/N sum_i Y_i(g)
 #' @param A_0_list This parameter allow for specifying the matrices used to construct the Xhat vector of pre-treatment differences. If left NULL, the default is to use the scalar set of controls used in Callaway and Sant'Anna. If use_DiD_A0 = FALSE, then it uses the full vector possible comparisons of (g,g') in periods t<g,g'.
-#' @param eventTime If using estimand = "eventstudy", specify what eventTime you want the event-study parameter for. The default is 0, the period in which treatment occurs
+#' @param eventTime If using estimand = "eventstudy", specify what eventTime you want the event-study parameter for. The default is 0, the period in which treatment occurs. If a vector is provided, estimates are returned for all the event-times in the vector.
 #' @param beta Optional. A coefficient to use for covariate adjustment. If not specified, the plug-in optimal coefficient is used. beta =0 corresponds with the simple difference-in-means. beta = 1 corresponds with the Callaway and Sant'Anna estimator when using the default value of use_DiD_A0=T.
 #' @param  use_DiD_A0 If this parameter is true, then Xhat corresponds with the scalar used by Callaway and Sant'Anna, so the Callaway and Sant'Anna estimator corresponds with beta=1. If it is false, the Xhat is a vector with all possible comparisons of pairs of cohorts before either is treated. The latter option should only be used when the number of possible comparisons is small relative to sample size.
-#' @return df A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error).
+#' @return df A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column.
 staggered <- function(df,
                       estimand = NULL,
                       A_theta_list = NULL,
@@ -672,6 +672,21 @@ staggered <- function(df,
                                           TRUE,
                                           FALSE)){
 
+  #If eventTime is a vector, call staggered for each event-time and combine the results
+    #Add the variable eventTime to the data frame
+  if(length(eventTime) > 1){
+    eventPlotResults <-
+      purrr::map_dfr(.x = eventTime,
+                     .f = ~staggered(df = df,
+                                     estimand = estimand,
+                                     A_theta_list = A_theta_list,
+                                     A_0_list = A_0_list,
+                                     eventTime = .x,
+                                     beta = NULL,
+                                     use_DiD_A0 = use_DiD_A0) %>%
+                                     mutate(eventTime = .x) )
+    return(eventPlotResults)
+  }
   g_level_summaries <- compute_g_level_summaries(df)
   Ybar_g_list <- g_level_summaries$Ybar_g_List
   S_g_list <- g_level_summaries$S_g_List
