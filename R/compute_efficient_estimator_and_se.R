@@ -244,7 +244,11 @@ compute_se_Thetahat_beta <- function(beta,
                                      N_g_list,
                                      g_list,
                                      t_list,
-                                     Xvar_list = NULL){
+                                     Xvar_list = NULL,
+                                     return_beta_sum = F){
+
+  #This function computes the standard error, using the version sigma_** that adjust for pre-treatment covariates
+  # If return_beta_sum = T, it returns a list wit
 
   seConservative <- compute_se_Thetahat_beta_conservative(beta,
                                                           Ybar_g_list,
@@ -306,7 +310,16 @@ compute_se_Thetahat_beta <- function(beta,
   }else{
     se_adjusted <- sqrt( var_conservative - adjustmentFactor )
   }
-  return(se_adjusted)
+
+  if(!return_beta_sum){
+    return(se_adjusted)
+  }else{
+    resultsList <- list(se = se_adjusted,
+                        betahat_g_sum = betahat_g_sum,
+                        avg_MSM = avg_MSM,
+                        N= N)
+    return(resultsList)
+  }
 }
 
 #' @export
@@ -364,7 +377,7 @@ create_A0_list <- function(g_list,
 
 
 sum_of_lists <- function(.l){
-  #Given a list of lists all of the same length, this sums all the elements
+  #Given a list of lists all of the same length, this returns a list where the jth entry is the sum of the jth entry of all the lists
   if(length(.l) == 1){return(.l)}
   results <- purrr::reduce(.x = .l,
                            .f = function(l1,
@@ -384,6 +397,37 @@ scalar_product_lists <- function(c,.l){
   return(results)
 }
 
+left_product_lists <- function(c,.l){
+  #Takes a constant vector or matrix c and a list .l of conformable elements,
+    # and returns a list with c %*% x for each element x of l
+  results <- purrr::map(.x = .l,
+                        .f = ~c %*% .x)
+  return(results)
+}
+
+
+right_product_lists <- function(c,.l){
+  #Takes a constant vector or matrix c and a list .l of conformable elements,
+  # and returns a list with x %*% c for each element x of l
+  results <- purrr::map(.x = .l,
+                        .f = ~c %*% .x)
+  return(results)
+}
+
+
+stack_rows_of_lists <- function(.l){
+  #Given a list of lists all of the same length, where each inner list is a vector, this returns a list where the jth element is a matrix stacking all the jth elemtns
+  if(length(.l) == 1){return(.l)}
+  results <- purrr::reduce(.x = .l,
+                           .f = function(l1,
+                                         l2){
+                             purrr::map2(l1,
+                                         l2,
+                                         .f = ~rbind(.x , .y))
+                           }
+  )
+  return(results)
+}
 
 create_Atheta_list_for_ATE_tg <- function(t,
                                           g,
@@ -649,6 +693,42 @@ create_Atheta_list_for_simple_average_ATE <- function(g_list, t_list, N_g_list){
 #source(here("Code/refine-variance-estimates.R"))
 
 
+calculate_full_vcv <- function(eventPlotResultsList, resultsDF){
+  #Calculate A_theta_list - A_0_list %*% beta for each list
+  #The reuslting list combined_A_list is a list of matrices of length |G| so that the vector of thetas is \sum combined_A_list[g] %*% Ybar
+  combine_A_lists <- function(A_theta_list,
+                              A_0_list,
+                              beta){
+
+    #Compute A_0_list %*% beta
+    A_0_beta_list <- right_product_lists(c = beta, .l = A_0_list)
+    #Compute A_theta_list - A_0_list %*% beta
+    combined_list <- sum_of_lists(list(A_theta_list, scalar_product_lists(-1,A_0_beta_list)) )
+    return(combined_list)
+  }
+  combined_A_list <- purrr::map(.x = eventPlotResultsList,
+                                .f = ~combine_A_lists(A_theta_list = .x$A_theta_list, A_0_list = .$A_0_list, beta = .$beta)  )
+
+  combined_A_list <- stack_rows_of_lists(combined_A_list)
+
+  #The newman vcv is \sum 1/N_g * combined_A * S * combined_A'
+  vcv_neyman_terms_list <-
+    purrr::pmap(.l = list(S_g = eventPlotResultsList[[1]]$S_g_list, A = combined_A_list, N_g = eventPlotResultsList[[1]]$N_g_list),
+                .f = function(S_g, A, N_g){ return((1/N_g)* A %*% S_g %*% t(A) ) } )
+  vcv_neyman <- base::Reduce(f = '+', x = vcv_neyman_terms_list)
+
+
+  stacked_betahat_g_sum <- base::Reduce(x = purrr::map(.x = eventPlotResultsList, .f = ~t(.x$betahat_g_sum)),
+                                        f = rbind)
+
+  vcv_adjustment <- 1/eventPlotResultsList[[1]]$N * stacked_betahat_g_sum %*% eventPlotResultsList[[1]]$avg_MSM %*% t(stacked_betahat_g_sum)
+
+  vcv <- vcv_neyman - vcv_adjustment
+
+  return(list(vcv = vcv, vcv_neyman = vcv_neyman))
+}
+
+
 
 #' @export
 #' @useDynLib staggered
@@ -659,9 +739,11 @@ create_Atheta_list_for_simple_average_ATE <- function(g_list, t_list, N_g_list){
 #' @param A_theta_list This parameter allows for specifying a custom estimand, and should be left as NULL if estimand is specified. It is a list of matrices A_theta_g so that the parameter of interest is sum_g A_theta_g Ybar_g, where Ybar_g = 1/N sum_i Y_i(g)
 #' @param A_0_list This parameter allow for specifying the matrices used to construct the Xhat vector of pre-treatment differences. If left NULL, the default is to use the scalar set of controls used in Callaway and Sant'Anna. If use_DiD_A0 = FALSE, then it uses the full vector possible comparisons of (g,g') in periods t<g,g'.
 #' @param eventTime If using estimand = "eventstudy", specify what eventTime you want the event-study parameter for. The default is 0, the period in which treatment occurs. If a vector is provided, estimates are returned for all the event-times in the vector.
-#' @param beta Optional. A coefficient to use for covariate adjustment. If not specified, the plug-in optimal coefficient is used. beta =0 corresponds with the simple difference-in-means. beta = 1 corresponds with the Callaway and Sant'Anna estimator when using the default value of use_DiD_A0=T.
-#' @param  use_DiD_A0 If this parameter is true, then Xhat corresponds with the scalar used by Callaway and Sant'Anna, so the Callaway and Sant'Anna estimator corresponds with beta=1. If it is false, the Xhat is a vector with all possible comparisons of pairs of cohorts before either is treated. The latter option should only be used when the number of possible comparisons is small relative to sample size.
-#' @return df A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column.
+#' @param beta A coefficient to use for covariate adjustment. If not specified, the plug-in optimal coefficient is used. beta =0 corresponds with the simple difference-in-means. beta = 1 corresponds with the Callaway and Sant'Anna estimator when using the default value of use_DiD_A0=T.
+#' @param use_DiD_A0 If this parameter is true, then Xhat corresponds with the scalar used by Callaway and Sant'Anna, so the Callaway and Sant'Anna estimator corresponds with beta=1. If it is false, the Xhat is a vector with all possible comparisons of pairs of cohorts before either is treated. The latter option should only be used when the number of possible comparisons is small relative to sample size.
+#' @param return_full_vcv If this is true and estimand = "eventstudy", then the function returns a list containing the full variance-covariance matrix for the event-plot estimates in addition to the usual dataframe with the estimates
+#' @param return_matrix_lists If true, the function returns a list of the A_0_list and A_theta_list matrices along with betastar. This is used for internal recursive calls to calculate the variance-covariance matrix, and will generally not be needed by the end-user. Default is False.
+#' @return resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = T and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_lists = T, it likewise returns a list containing lists of matrices used in the vcv calculation.)
 staggered <- function(df,
                       estimand = NULL,
                       A_theta_list = NULL,
@@ -670,22 +752,42 @@ staggered <- function(df,
                       beta = NULL,
                       use_DiD_A0 = ifelse(is.null(A_0_list),
                                           TRUE,
-                                          FALSE)){
+                                          FALSE),
+                      return_full_vcv = F,
+                      return_matrix_list = F){
 
   #If eventTime is a vector, call staggered for each event-time and combine the results
     #Add the variable eventTime to the data frame
   if(length(eventTime) > 1){
-    eventPlotResults <-
-      purrr::map_dfr(.x = eventTime,
+
+    eventPlotResultsList <-
+      purrr::map(.x = eventTime,
                      .f = ~staggered(df = df,
                                      estimand = estimand,
                                      A_theta_list = A_theta_list,
                                      A_0_list = A_0_list,
                                      eventTime = .x,
                                      beta = NULL,
-                                     use_DiD_A0 = use_DiD_A0) %>%
-                                     mutate(eventTime = .x) )
-    return(eventPlotResults)
+                                     use_DiD_A0 = use_DiD_A0,
+                                     return_matrix_list = T))
+
+    resultsDF <- purrr::reduce(.x = purrr::map(.x = eventPlotResultsList, .f = ~ .x$resultsDF),
+                               .f = bind_rows)
+
+    #Add in eventTimes
+    resultsDF$eventTime <- eventTime
+
+    if(return)
+
+    vcvs <- calculate_full_vcv(eventPlotResultsList = eventPlotResultsList,
+                               resultsDF = resultsDF)
+
+
+
+    resultsList <- list(resultsDF = resultsDF, vcv = vcvs$vcv, vcv_neyman = vcvs$vcv_neyman)
+
+    #Create stacked beta for the
+    return(resultsList)
   }
   g_level_summaries <- compute_g_level_summaries(df)
   Ybar_g_list <- g_level_summaries$Ybar_g_List
@@ -789,7 +891,7 @@ staggered <- function(df,
                                                            S_g_list,
                                                            N_g_list,
                                                            Xvar_list = Xvar_list)
-  se <- compute_se_Thetahat_beta(beta = beta,
+  seResults <- compute_se_Thetahat_beta(beta = beta,
                                  Ybar_g_list,
                                  A_theta_list,
                                  A_0_list,
@@ -797,11 +899,28 @@ staggered <- function(df,
                                  N_g_list,
                                  g_list,
                                  t_list,
-                                 Xvar_list = Xvar_list)
+                                 Xvar_list = Xvar_list,
+                                 return_beta_sum = T
+                                 )
 
-  df <- data.frame(estimate = thetahat,
+  se <- seResults$se
+
+  resultsDF <- data.frame(estimate = thetahat,
                    se = se,
                    se_neyman = se_neyman)
+  if(!return_matrix_list){
+    return(resultsDF)
+  }else{
+    resultsList <- list(resultsDF = df,
+                        A_theta_list = A_theta_list,
+                        A_0_list = A_0_list,
+                        beta = beta,
+                        betahat_g_sum = seResults$betahat_g_sum,
+                        avg_MSM = seResults$avg_MSM,
+                        S_g_list = S_g_list,
+                        N_g_list = N_g_list,
+                        N = seResults$N)
 
-  return(df)
+    return(resultsList)
+  }
 }
