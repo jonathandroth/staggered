@@ -10,6 +10,9 @@
 #' @export
 compute_g_level_summaries <- function(df){
 
+  #Balance the panel (and throw a warning if original panel is unbalanced)
+  df <- balance_df(df)
+
   g_list <- sort(unique(df$g))
   t_list <- sort(unique(df$t))
   compute_Ybar_Sbar_g <- function(g){
@@ -61,6 +64,44 @@ compute_g_level_summaries <- function(df){
                 t_list = t_list ))
 }
 
+
+balance_df <- function(df){
+
+  ## This function creates a balanced panel as needed for our analysis
+
+    # It first checks if rows of the data are uniquely characterized by (i,t)
+    # If there are multiple observations per (i,t), it throws an error
+
+    #It then removes observations i for which data is not available for all t
+
+
+  numPeriods <- length(unique(df$t))
+
+
+  ##Check that (i,t) is a unique identifier
+  it_counts <-
+    df %>%
+      dplyr::group_by(i,t) %>%
+      dplyr::summarise(n = n())
+
+  if(max(it_counts$n) > 1 ){
+    stop("There are multiple observations with the same (i,t) values. The panel should have a unique outcome for each (i,t) value.")
+  }
+
+
+  df <- df %>%
+        dplyr::group_by(i) %>%
+        dplyr::mutate(numPeriods_i = length(unique(t)))
+
+  #Check if panel is balanced. If not, drop the unbalanced observations and throw a warning
+  if(min(df$numPeriods_i) == numPeriods){
+    return(df)
+  }else{
+    warning("Panel is unbalanced. Dropping observations with missing values of Y_{it}. If you wish to include these observations, provide staggered with a df with imputed outcomes.")
+    df <- df %>% dplyr::filter(numPeriods_i == numPeriods) %>% dplyr::select(-numPeriods_i)
+    return(df)
+  }
+}
 
 compute_Thetahat0 <- function(Ybar_g_list,
                               A_theta_list){
