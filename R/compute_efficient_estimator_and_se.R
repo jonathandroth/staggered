@@ -71,6 +71,7 @@ balance_df <- function(df){
 
     # It first checks if rows of the data are uniquely characterized by (i,t)
     # If there are multiple observations per (i,t), it throws an error
+    # It also removes observations with missing y
 
     #It then removes observations i for which data is not available for all t
 
@@ -88,16 +89,20 @@ balance_df <- function(df){
     stop("There are multiple observations with the same (i,t) values. The panel should have a unique outcome for each (i,t) value.")
   }
 
-
-  df <- df %>%
-        dplyr::group_by(i) %>%
-        dplyr::mutate(numPeriods_i = length(unique(t)))
+  #Check if there are missign values for y, and remove them if so
+  if(max(is.na(df$y)) > 0 ){
+    df <- df %>% dplyr::filter(!is.na(y))
+  }
 
   #Check if panel is balanced. If not, drop the unbalanced observations and throw a warning
+  df <- df %>%
+    dplyr::group_by(i) %>%
+    dplyr::mutate(numPeriods_i = length(unique(t)))
+
   if(min(df$numPeriods_i) == numPeriods){
     return(df)
   }else{
-    warning("Panel is unbalanced. Dropping observations with missing values of Y_{it}. If you wish to include these observations, provide staggered with a df with imputed outcomes.")
+    warning("Panel is unbalanced (or has missing values for some observations). Dropping observations with missing values of Y_{it} for some time periods. If you wish to include these observations, provide staggered with a df with imputed outcomes.")
     df <- df %>% dplyr::filter(numPeriods_i == numPeriods) %>% dplyr::select(-numPeriods_i)
     return(df)
   }
