@@ -735,7 +735,7 @@ calculate_full_vcv <- function(eventPlotResultsList, resultsDF){
 #' @title Calculate the efficient adjusted estimator in staggered rollout designs
 #' @description This functions calculates the efficient estimator for staggered rollout designs proposed by Roth and Sant'Anna.
 #' @param df A data frame containing panel data with the variables y (an outcome), i (an individual identifier), t (the period in which the outcome is observe), g (the period in which i is first treated, with Inf denoting never treated)
-#' @param estimand The estimand to be calculated: "simple" averages all treated (t,g) combinations with weights proportional to N_g; "cohort" averages the ATEs for each cohort g, and then takes an N_g-weighted average across g; "calendar" averages ATEs for each time period, weighted by N_g for treated units, and then averages across time. "EventStudy" returns the average effect at the ''event-time'' given in the parameter EventTime.  The parameter can be left blank if a custom parameter is provided in A_theta_list
+#' @param estimand The estimand to be calculated: "simple" averages all treated (t,g) combinations with weights proportional to N_g; "cohort" averages the ATEs for each cohort g, and then takes an N_g-weighted average across g; "calendar" averages ATEs for each time period, weighted by N_g for treated units, and then averages across time. "eventstudy" returns the average effect at the ''event-time'' given in the parameter EventTime.  The parameter can be left blank if a custom parameter is provided in A_theta_list. The argument is not case-sensitive.
 #' @param A_theta_list This parameter allows for specifying a custom estimand, and should be left as NULL if estimand is specified. It is a list of matrices A_theta_g so that the parameter of interest is sum_g A_theta_g Ybar_g, where Ybar_g = 1/N sum_i Y_i(g)
 #' @param A_0_list This parameter allow for specifying the matrices used to construct the Xhat vector of pre-treatment differences. If left NULL, the default is to use the scalar set of controls used in Callaway and Sant'Anna. If use_DiD_A0 = FALSE, then it uses the full vector possible comparisons of (g,g') in periods t<g,g'.
 #' @param eventTime If using estimand = "eventstudy", specify what eventTime you want the event-study parameter for. The default is 0, the period in which treatment occurs. If a vector is provided, estimates are returned for all the event-times in the vector.
@@ -756,9 +756,19 @@ staggered <- function(df,
                       return_full_vcv = F,
                       return_matrix_list = F){
 
+
+  #  If estimand is provided, force to be lower-case (allowing for non-case sensitive inputs)
+  if(!is.null(estimand)){
+    estimand <- tolower(estimand)
+  }
+
   #If eventTime is a vector, call staggered for each event-time and combine the results
     #Add the variable eventTime to the data frame
   if(length(eventTime) > 1){
+
+    if(estimand != "eventstudy"){
+      stop("You provided a vector fpr eventTime but estimand is not set to 'eventstudy'. Did you mean to set estimand = 'eventstudy'?")
+    }
 
     eventPlotResultsList <-
       purrr::map(.x = eventTime,
@@ -777,17 +787,20 @@ staggered <- function(df,
     #Add in eventTimes
     resultsDF$eventTime <- eventTime
 
-    if(return)
+      if(return_full_vcv){
 
-    vcvs <- calculate_full_vcv(eventPlotResultsList = eventPlotResultsList,
-                               resultsDF = resultsDF)
+      vcvs <- calculate_full_vcv(eventPlotResultsList = eventPlotResultsList,
+                                 resultsDF = resultsDF)
 
 
 
-    resultsList <- list(resultsDF = resultsDF, vcv = vcvs$vcv, vcv_neyman = vcvs$vcv_neyman)
+      resultsList <- list(resultsDF = resultsDF, vcv = vcvs$vcv, vcv_neyman = vcvs$vcv_neyman)
 
-    #Create stacked beta for the
-    return(resultsList)
+      #Create stacked beta for the
+      return(resultsList)
+      }else{
+        return(resultsDF)
+      }
   }
   g_level_summaries <- compute_g_level_summaries(df)
   Ybar_g_list <- g_level_summaries$Ybar_g_List
@@ -795,6 +808,7 @@ staggered <- function(df,
   N_g_list <- g_level_summaries$N_g_List
   g_list <- g_level_summaries$g_list
   t_list <- g_level_summaries$t_list
+
 
   #If estimand is provided, calculate the appropriate A_theta_list
   if(!is.null(estimand)){
@@ -911,7 +925,7 @@ staggered <- function(df,
   if(!return_matrix_list){
     return(resultsDF)
   }else{
-    resultsList <- list(resultsDF = df,
+    resultsList <- list(resultsDF = resultsDF,
                         A_theta_list = A_theta_list,
                         A_0_list = A_0_list,
                         beta = beta,
