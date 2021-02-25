@@ -746,8 +746,8 @@ calculate_full_vcv <- function(eventPlotResultsList, resultsDF){
                               A_0_list,
                               beta){
 
-    #Compute A_0_list %*% beta
-    A_0_beta_list <- right_product_lists(c = beta, .l = A_0_list)
+    #Compute beta' %*% A_0_list
+    A_0_beta_list <- left_product_lists(c = t(beta), .l = A_0_list)
     #Compute A_theta_list - A_0_list %*% beta
     combined_list <- sum_of_lists(list(A_theta_list, scalar_product_lists(-1,A_0_beta_list)) )
     return(combined_list)
