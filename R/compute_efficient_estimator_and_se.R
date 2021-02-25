@@ -933,7 +933,7 @@ staggered <- function(df,
   }
 
   #If beta =0, convert beta to the appropriate length
-  if(length(beta) == 1 & beta == 0){
+  if(length(beta) == 1 && beta == 0){
     beta = matrix(0, dim(A_0_list[[1]])[1])
   }
 
