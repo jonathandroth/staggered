@@ -13,7 +13,8 @@ staggered(
   beta = NULL,
   use_DiD_A0 = ifelse(is.null(A_0_list), TRUE, FALSE),
   return_full_vcv = F,
-  return_matrix_list = F
+  return_matrix_list = F,
+  use_last_treated_only = F
 )
 }
 \arguments{
@@ -32,6 +33,8 @@ staggered(
 \item{use_DiD_A0}{If this parameter is true, then Xhat corresponds with the scalar used by Callaway and Sant'Anna, so the Callaway and Sant'Anna estimator corresponds with beta=1. If it is false, the Xhat is a vector with all possible comparisons of pairs of cohorts before either is treated. The latter option should only be used when the number of possible comparisons is small relative to sample size.}
 
 \item{return_full_vcv}{If this is true and estimand = "eventstudy", then the function returns a list containing the full variance-covariance matrix for the event-plot estimates in addition to the usual dataframe with the estimates}
+
+\item{use_last_treated_only}{If true, then A_0_list and A_theta_list are created to only make comparisons with the last treated cohorts (as suggested by Sun and Abraham), rather than using not-yet-treated units as comparisons. If set to True (and use_DiD_A0 = T), then beta=1 corresponds with the Sun and Abraham estimator.}
 
 \item{return_matrix_lists}{If true, the function returns a list of the A_0_list and A_theta_list matrices along with betastar. This is used for internal recursive calls to calculate the variance-covariance matrix, and will generally not be needed by the end-user. Default is False.}
 }
