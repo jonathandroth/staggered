@@ -13,9 +13,11 @@ and Sant’Anna (2021)](https://arxiv.org/pdf/2102.01291.pdf). If units
 are randomly (or quasi-randomly) assigned to begin treatment at
 different dates, the efficient estimator can potentially offer
 substantial gains over methods that only impose parallel trends. The
-package also allows for calculating the estimator of [Callaway and
+package also allows for calculating the estimators of [Callaway and
 Sant’Anna
 (2020)](https://www.sciencedirect.com/science/article/pii/S0304407620303948?dgcid=author)
+and [Sun and Abraham
+(2020)](https://www.sciencedirect.com/science/article/abs/pii/S030440762030378X)
 and the simple-difference-in-means as special cases.
 
 ## Installation
@@ -132,7 +134,35 @@ eventPlotResults %>%
 
 ### Other Estimators
 
-If instead of the plug-in efficient estimator, one wishes to calculate
-the simple difference-in-means or Callaway and Sant’Anna estimator, one
-can specify the argument beta=0 or beta=1, respectively, to the
-functions above.
+Our package also allows for the calculation of several other estimators
+proposed in the literature. For convenience we provide special functions
+for implementing the estimators proposed by Callaway & Sant’Anna and Sun
+& Abraham. The syntax is nearly identical to that for the efficient
+estimator:
+
+``` r
+#Calculate Callaway and Sant'Anna estimator for the simple weighted average
+staggered_cs(df = df, estimand = "simple")
+#>       estimate          se   se_neyman
+#> 1 -0.005176818 0.003928735 0.003930919
+```
+
+``` r
+#Calculate Sun and Abraham estimator for the simple weighted average
+staggered_sa(df = df, estimand = "simple")
+#>     estimate         se  se_neyman
+#> 1 0.01153851 0.01730161 0.01730234
+```
+
+The Callaway and Sant’Anna estimator corresponds with calling the
+staggered function with beta=1 (and the default use\_DiD\_A0=1), and the
+Sun and Abraham estimator corresponds with calling staggered with beta=1
+and use\_last\_treated\_only=T. If one is interested in the simple
+difference-in-means, one can call the staggered function with option
+beta=0.
+
+Note that the standard errors returned in the se column are based on the
+design-based approach in Roth & Sant’Anna, and thus will differ somewhat
+from those returned by the did package. The standard errors in
+se\_neyman should be very similar to those returned by the did package,
+although not identical in finite samples.
