@@ -999,8 +999,20 @@ staggered <- function(df,
   resultsDF <- data.frame(estimate = thetahat,
                    se = se,
                    se_neyman = se_neyman)
+
   if(!return_matrix_list){
-    return(resultsDF)
+    #If return_matrix_list is not specified, then we return results DF unless return_full_vcv =T
+    if(!return_full_vcv){
+      return(resultsDF)
+    }else{
+      resultsList <- list(resultsDF = resultsDF,
+                          vcv = as.matrix(se^2),
+                          vcv_neyman = as.matrix(se_neyman^2))
+
+      return(resultsList)
+    }
+
+
   }else{
     resultsList <- list(resultsDF = resultsDF,
                         A_theta_list = A_theta_list,
@@ -1014,6 +1026,8 @@ staggered <- function(df,
 
     return(resultsList)
   }
+
+
 }
 
 
