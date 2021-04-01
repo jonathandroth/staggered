@@ -7,18 +7,19 @@
 
 <!-- badges: end -->
 
-The staggered package computes the efficient estimator for settings with
-randomized treatment timing, based on the theoretical results in [Roth
-and Sant’Anna (2021)](https://arxiv.org/pdf/2102.01291.pdf). If units
-are randomly (or quasi-randomly) assigned to begin treatment at
+The staggered R package computes the efficient estimator for settings
+with randomized treatment timing, based on the theoretical results in
+[Roth and Sant’Anna (2021)](https://arxiv.org/pdf/2102.01291.pdf). If
+units are randomly (or quasi-randomly) assigned to begin treatment at
 different dates, the efficient estimator can potentially offer
 substantial gains over methods that only impose parallel trends. The
-package also allows for calculating the estimators of [Callaway and
-Sant’Anna
+package also allows for calculating the generalized
+difference-in-differences estimators of [Callaway and Sant’Anna
 (2020)](https://www.sciencedirect.com/science/article/pii/S0304407620303948?dgcid=author)
 and [Sun and Abraham
 (2020)](https://www.sciencedirect.com/science/article/abs/pii/S030440762030378X)
-and the simple-difference-in-means as special cases.
+and the simple-difference-in-means as special cases. We also provide a
+Stata [implementation](#stata-implementation) via the RCall package.
 
 ## Installation
 
@@ -181,23 +182,32 @@ commands
     > net install github, from("https://haghish.github.io/github/")
     > github install haghish/rcall
 
-The staggered\_stata package can then be installed with
+Note that the user must have R installed before installing the rcall
+package. The latest version of R can be downloaded
+[here](https://cloud.r-project.org/). The staggered\_stata package can
+then be installed with
 
     > github install jonathandroth/staggered_stata
 
 The three packages can also be installed by downloading the ado files
-from the package webpages ( [github](https://github.com/haghish/github),
+from the package webpages ([github](https://github.com/haghish/github),
 [RCall](https://github.com/haghish/rcall),
-[staggered\_stata](https://github.com/jonathandroth/staggered_stata) )
+[staggered\_stata](https://github.com/jonathandroth/staggered_stata))
 directly and pasting them into the user’s ado/personal directory.
 
 ### Usage
 
 The syntax for staggered\_stata is very similar to that for the
-staggered R package. Below are a few illustrative examples.
+staggered R package. Below are a few illustrative examples, using the
+same data as above.
+
+    >use "https://github.com/jonathandroth/staggered_stata/raw/master/pj_officer_level_balanced.dta"
+    >staggered, y("complaints") g("first_trained") t("period") i("uid") estimand("simple")
+    >staggered_cs, y("complaints") g("first_trained") t("period") i("uid") estimand("eventstudy") eventTimeStart(-2) eventTimeEnd(2)
+    >staggered_sa, y("complaints") g("first_trained") t("period") i("uid") estimand("cohort")
 
 ![Stata examples.](man/figures/Stata_screenshot.png)
 
 The staggered, staggered\_cs, and staggered\_as commands all return a
 vector of coefficients and covariance matrix in ereturn list, and thus
-can be used with any post-estimation command (e.g. coefplot).
+can be used with any post-estimation command in Stata (e.g. coefplot).
