@@ -1,6 +1,6 @@
 Package: staggered
 Title: Efficient Estimation Under Staggered Treatment Timing
-Version: 0.1
+Version: 1.0
 Authors@R: 
     c(person("Jonathan", "Roth", email = "Jonathan.Roth@microsoft.com", role = c("aut","cre")),
     person("Pedro H.C.", "Sant'Anna", email = "pedro.h.santanna@vanderbilt.edu", role = c("aut")))
