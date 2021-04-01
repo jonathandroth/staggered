@@ -111,3 +111,27 @@ The Callaway and Sant'Anna estimator corresponds with calling the staggered func
 
 Note that the standard errors returned in the se column are based on the design-based approach in Roth & Sant'Anna, and thus will differ somewhat from those returned by the did package. The standard errors in se_neyman should be very similar to those returned by the did package, although not identical in finite samples. 
 
+
+## Stata implementation
+
+We also provide a Stata implementation (staggered_stata) via the RCall package, which calls the staggered R package from within Stata.
+
+### Installation
+
+To install the staggered_stata package, the user first needs to install the github and RCall packages. This can be done with the following commands
+    
+    > net install github, from("https://haghish.github.io/github/")
+    > github install haghish/rcall
+
+The staggered_stata package can then be installed with
+  
+    > github install jonathandroth/staggered_stata
+  
+The three packages can also be installed by downloading the ado files from the package webpages ( [github](https://github.com/haghish/github), [RCall](https://github.com/haghish/rcall), [staggered_stata](https://github.com/jonathandroth/staggered_stata) ) directly and pasting them into the user's ado/personal directory.
+
+### Usage
+The syntax for staggered_stata is very similar to that for the staggered R package. Below are a few illustrative examples.
+
+![Stata examples.](man/figures/Stata_screenshot.png)
+
+The staggered, staggered_cs, and staggered_as commands all return a vector of coefficients and covariance matrix in ereturn list, and thus can be used with any post-estimation command (e.g. coefplot).
