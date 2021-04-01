@@ -11,8 +11,7 @@ staggered_cs(
   A_0_list = NULL,
   eventTime = 0,
   return_full_vcv = F,
-  return_matrix_list = F,
-  use_last_treated_only = F
+  return_matrix_list = F
 )
 }
 \arguments{
@@ -28,12 +27,10 @@ staggered_cs(
 
 \item{return_full_vcv}{If this is true and estimand = "eventstudy", then the function returns a list containing the full variance-covariance matrix for the event-plot estimates in addition to the usual dataframe with the estimates}
 
-\item{use_last_treated_only}{If true, then A_0_list and A_theta_list are created to only make comparisons with the last treated cohorts (as suggested by Sun and Abraham), rather than using not-yet-treated units as comparisons. If set to True (and use_DiD_A0 = T), then beta=1 corresponds with the Sun and Abraham estimator.}
-
-\item{return_matrix_lists}{If true, the function returns a list of the A_0_list and A_theta_list matrices along with betastar. This is used for internal recursive calls to calculate the variance-covariance matrix, and will generally not be needed by the end-user. Default is False.}
+\item{return_matrix_list}{If true, the function returns a list of the A_0_list and A_theta_list matrices along with betastar. This is used for internal recursive calls to calculate the variance-covariance matrix, and will generally not be needed by the end-user. Default is False.}
 }
 \value{
-resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = T and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_lists = T, it likewise returns a list containing lists of matrices used in the vcv calculation.)
+resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = T and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = T, it likewise returns a list containing lists of matrices used in the vcv calculation.)
 }
 \description{
 This functions calculates the Callaway & Sant'Anna (2020) estimator for staggered rollout designs using not-yet-treated units (including never-treated, if availabe) as controls.
