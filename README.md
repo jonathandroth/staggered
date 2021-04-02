@@ -180,7 +180,7 @@ the github and RCall packages. This can be done with the following
 commands
 
     > net install github, from("https://haghish.github.io/github/")
-    > github install haghish/rcall
+    > github install haghish/rcall, stable
 
 Note that the user must have R installed before installing the rcall
 package. The latest version of R can be downloaded
