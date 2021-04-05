@@ -315,7 +315,16 @@ compute_se_Thetahat_beta <- function(beta,
 
   #Right now, we're assuming first period is 1. May want to relax this
   if(gMin == tMin){
-    return(seConservative)
+    if(!return_beta_sum){
+      return(seConservative)
+    }else{
+      resultsList <- list(se = seConservative,
+                          betahat_g_sum = 0,
+                          avg_MSM = 0,
+                          N= purrr::reduce(N_g_list,
+                                           sum))
+      return(resultsList)
+    }
     }
 
   #Create matrix M that selects the rows of S_g correspondign with t< g_min
