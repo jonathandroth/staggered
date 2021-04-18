@@ -6,6 +6,10 @@
 \usage{
 staggered(
   df,
+  i = "i",
+  t = "t",
+  g = "g",
+  y = "y",
   estimand = NULL,
   A_theta_list = NULL,
   A_0_list = NULL,
@@ -19,6 +23,14 @@ staggered(
 }
 \arguments{
 \item{df}{A data frame containing panel data with the variables y (an outcome), i (an individual identifier), t (the period in which the outcome is observe), g (the period in which i is first treated, with Inf denoting never treated)}
+
+\item{i}{The name of column containing the individual (cross-sectional unit) identifier. Default is "i".}
+
+\item{t}{The name of the column containing the time periods. Default is "t".}
+
+\item{g}{The name of the column containing the first period when a particular observation is treated, with Inf denoting never treated. Default is "g".}
+
+\item{y}{The name of the column containing the outcome variable. Default is "y".}
 
 \item{estimand}{The estimand to be calculated: "simple" averages all treated (t,g) combinations with weights proportional to N_g; "cohort" averages the ATEs for each cohort g, and then takes an N_g-weighted average across g; "calendar" averages ATEs for each time period, weighted by N_g for treated units, and then averages across time. "eventstudy" returns the average effect at the ''event-time'' given in the parameter EventTime.  The parameter can be left blank if a custom parameter is provided in A_theta_list. The argument is not case-sensitive.}
 
