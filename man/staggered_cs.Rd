@@ -10,8 +10,8 @@ staggered_cs(
   A_theta_list = NULL,
   A_0_list = NULL,
   eventTime = 0,
-  return_full_vcv = F,
-  return_matrix_list = F
+  return_full_vcv = FALSE,
+  return_matrix_list = FALSE
 )
 }
 \arguments{
@@ -30,8 +30,38 @@ staggered_cs(
 \item{return_matrix_list}{If true, the function returns a list of the A_0_list and A_theta_list matrices along with betastar. This is used for internal recursive calls to calculate the variance-covariance matrix, and will generally not be needed by the end-user. Default is False.}
 }
 \value{
-resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = T and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = T, it likewise returns a list containing lists of matrices used in the vcv calculation.)
+resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = TRUE, it likewise returns a list containing lists of matrices used in the vcv calculation.)
 }
 \description{
-This functions calculates the Callaway & Sant'Anna (2020) estimator for staggered rollout designs using not-yet-treated units (including never-treated, if availabe) as controls.
+This functions calculates the Callaway & Sant'Anna (2020) estimator for staggered rollout designs using not-yet-treated units (including never-treated, if available) as controls.
+}
+\examples{
+\dontrun{
+# Load some libraries
+library(dplyr)
+library(purrr)
+library(MASS)
+# load the officer data
+df <- pj_officer_level_balanced
+# We modify the data so that the time dimension is named t,
+# the period of treatment is named g,
+# the outcome is named y,
+# and the individual identifiers are named i.
+df <- df \%>\% rename(t = period, y = complaints, g = first_trained, i = uid)
+# Calculate Callaway and Sant'Anna estimator for the simple weighted average
+staggered_cs(df = df, estimand = "simple")
+# Calculate Callaway and Sant'Anna estimator for the cohort weighted average
+staggered_cs(df = df, estimand = "cohort")
+# Calculate Callaway and Sant'Anna estimator for the calendar weighted average
+staggered_cs(df = df, estimand = "calendar")
+# Calculate Callaway and Sant'Anna event-study coefficients for the first 24 months
+# (month 0 is instantaneous effect)
+eventPlotResults <- staggered_cs(df = df, estimand = "eventstudy", eventTime = 0:23)
+eventPlotResults \%>\% head()
+}
+}
+\references{
+\cite{Callaway, Brantly, and Sant'Anna, Pedro H. C. (2020),
+'Difference-in-Differences with Multiple Time Periods', Forthcoming at the Journal of Econometrics,
+\doi{10.1016/j.jeconom.2020.12.001}.}
 }

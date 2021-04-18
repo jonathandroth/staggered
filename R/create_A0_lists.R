@@ -5,7 +5,7 @@ create_A0_list_for_ATE_tg <- function(t,
                                       g_list,
                                       t_list,
                                       N_g_list,
-                                      use_last_treated_only = F){
+                                      use_last_treated_only = FALSE){
   numPeriods <- length(t_list)
   if(t < g){warning("t is less than g. ATE(t,g) is zero by assumption")}
   if(t >= max(g_list)){
@@ -89,7 +89,7 @@ create_A0_list_for_event_study <- function(eventTime,
                                            g_list,
                                            t_list,
                                            N_g_list,
-                                           use_last_treated_only = F){
+                                           use_last_treated_only = FALSE){
 
   #Create A0s for an ``event-study'' coefficient at lag eventTime
   # This estimand is the average treatment effects for units eventTime periods after first being treated
@@ -97,7 +97,7 @@ create_A0_list_for_event_study <- function(eventTime,
   # Cohorts are weighted by the cohort size (N_g)
   # This function returns the pre-period differences used as control in CS
   # i.e, the estimate of the the difference in period g-1 btwn cohort g and units not-yet-treated at g+eventTime
-  # If use_last_treated_only = T, then only the last cohort is used as a control
+  # If use_last_treated_only = TRUE, then only the last cohort is used as a control
 
   maxG <- max(g_list)
   eligible_cohort_index <- which( ((g_list + eventTime) < maxG ) & ((g_list + eventTime) <= max(t_list) ) )
@@ -132,7 +132,7 @@ create_A0_list_for_ATE_calendar_t <- function(t,
                                               g_list,
                                               t_list,
                                               N_g_list,
-                                              use_last_treated_only = F){
+                                              use_last_treated_only = FALSE){
 
   treated_by_t_indices <- which(g_list <= t)
   N_total_treated <- sum( unlist(N_g_list[treated_by_t_indices]) )
@@ -161,7 +161,7 @@ create_A0_list_for_ATE_cohort_g <- function(g,
                                             g_list,
                                             t_list,
                                             N_g_list,
-                                            use_last_treated_only = F){
+                                            use_last_treated_only = FALSE){
 
   treated_period_indices <- which((t_list >= g) & (t_list < max(g_list)))
   T_treated <- length( t_list[treated_period_indices] )
@@ -190,7 +190,7 @@ create_A0_list_for_ATE_cohort_g <- function(g,
 create_A0_list_for_cohort_average_ATE <- function(g_list,
                                                   t_list,
                                                   N_g_list,
-                                                  use_last_treated_only = F){
+                                                  use_last_treated_only = FALSE){
 
   g_eligible_index <-  which(g_list < max(g_list) & g_list <= max(t_list))
 
@@ -216,7 +216,7 @@ create_A0_list_for_cohort_average_ATE <- function(g_list,
 create_A0_list_for_calendar_average_ATE <- function(g_list,
                                                     t_list,
                                                     N_g_list,
-                                                    use_last_treated_only = F){
+                                                    use_last_treated_only = FALSE){
 
   t_eligible_index <-  which(t_list >= min(g_list) & t_list < max(g_list))
 
@@ -241,7 +241,7 @@ create_A0_list_for_calendar_average_ATE <- function(g_list,
 create_A0_list_for_simple_average_ATE <- function(g_list,
                                                   t_list,
                                                   N_g_list,
-                                                  use_last_treated_only = F){
+                                                  use_last_treated_only = FALSE){
 
   #Create a df with all the (g,t) pairs for which ATE is identified
   gt_df <- purrr::cross_df( list(g = g_list,

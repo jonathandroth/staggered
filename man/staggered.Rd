@@ -12,9 +12,9 @@ staggered(
   eventTime = 0,
   beta = NULL,
   use_DiD_A0 = ifelse(is.null(A_0_list), TRUE, FALSE),
-  return_full_vcv = F,
-  return_matrix_list = F,
-  use_last_treated_only = F
+  return_full_vcv = FALSE,
+  return_matrix_list = FALSE,
+  use_last_treated_only = FALSE
 )
 }
 \arguments{
@@ -28,7 +28,7 @@ staggered(
 
 \item{eventTime}{If using estimand = "eventstudy", specify what eventTime you want the event-study parameter for. The default is 0, the period in which treatment occurs. If a vector is provided, estimates are returned for all the event-times in the vector.}
 
-\item{beta}{A coefficient to use for covariate adjustment. If not specified, the plug-in optimal coefficient is used. beta =0 corresponds with the simple difference-in-means. beta = 1 corresponds with the Callaway and Sant'Anna estimator when using the default value of use_DiD_A0=T.}
+\item{beta}{A coefficient to use for covariate adjustment. If not specified, the plug-in optimal coefficient is used. beta =0 corresponds with the simple difference-in-means. beta = 1 corresponds with the Callaway and Sant'Anna estimator when using the default value of use_DiD_A0 = TRUE.}
 
 \item{use_DiD_A0}{If this parameter is true, then Xhat corresponds with the scalar used by Callaway and Sant'Anna, so the Callaway and Sant'Anna estimator corresponds with beta=1. If it is false, the Xhat is a vector with all possible comparisons of pairs of cohorts before either is treated. The latter option should only be used when the number of possible comparisons is small relative to sample size.}
 
@@ -36,11 +36,40 @@ staggered(
 
 \item{return_matrix_list}{If true, the function returns a list of the A_0_list and A_theta_list matrices along with betastar. This is used for internal recursive calls to calculate the variance-covariance matrix, and will generally not be needed by the end-user. Default is False.}
 
-\item{use_last_treated_only}{If true, then A_0_list and A_theta_list are created to only make comparisons with the last treated cohorts (as suggested by Sun and Abraham), rather than using not-yet-treated units as comparisons. If set to True (and use_DiD_A0 = T), then beta=1 corresponds with the Sun and Abraham estimator.}
+\item{use_last_treated_only}{If true, then A_0_list and A_theta_list are created to only make comparisons with the last treated cohorts (as suggested by Sun and Abraham), rather than using not-yet-treated units as comparisons. If set to TRUE (and use_DiD_A0 = TRUE), then beta=1 corresponds with the Sun and Abraham estimator.}
 }
 \value{
-resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = T and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = T, it likewise returns a list containing lists of matrices used in the vcv calculation.)
+resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = TRUE, it likewise returns a list containing lists of matrices used in the vcv calculation.)
 }
 \description{
 This functions calculates the efficient estimator for staggered rollout designs proposed by Roth and Sant'Anna.
+}
+\examples{
+\dontrun{
+# Load some libraries
+library(dplyr)
+library(purrr)
+library(MASS)
+# load the officer data
+df <- pj_officer_level_balanced
+# We modify the data so that the time dimension is named t,
+# the period of treatment is named g,
+# the outcome is named y,
+# and the individual identifiers are named i.
+df <- df \%>\% rename(t = period, y = complaints, g = first_trained, i = uid)
+# Calculate efficient estimator for the simple weighted average
+staggered(df = df, estimand = "simple")
+# Calculate efficient estimator for the cohort weighted average
+staggered(df = df, estimand = "cohort")
+# Calculate efficient estimator for the calendar weighted average
+staggered(df = df, estimand = "calendar")
+# Calculate event-study coefficients for the first 24 months
+# (month 0 is instantaneous effect)
+eventPlotResults <- staggered(df = df, estimand = "eventstudy", eventTime = 0:23)
+eventPlotResults \%>\% head()
+}
+}
+\references{
+\cite{Roth, Jonatahan, and Sant'Anna, Pedro H. C. (2021),
+'Efficient Estimation for Staggered Rollout Designs', \url{arXiv:2102.01291}.}
 }

@@ -6,6 +6,11 @@
 \usage{
 compute_Xhat(Ybar_g_list, A_0_list)
 }
+\arguments{
+\item{Ybar_g_list}{Ybar_g_list}
+
+\item{A_0_list}{A_0_list}
+}
 \description{
 \code{compute_Xhat} computes the vector Xhat of pre-treatment differences given the list of cohort means
 Ybar_g_list and the list of matrices A_0_list

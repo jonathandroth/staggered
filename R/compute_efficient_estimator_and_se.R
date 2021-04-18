@@ -7,7 +7,7 @@
 #' @return N_g_list A list of the number of observations for each cohort g
 #' @return g_list A list of when the cohorts were first treated
 #' @return t_list A list of the the time periods for the outcome. The vector of outcomes corresponds with this order.
-#' @export
+
 compute_g_level_summaries <- function(df){
 
   #Balance the panel (and throw a warning if original panel is unbalanced)
@@ -36,7 +36,7 @@ compute_g_level_summaries <- function(df){
 
     #Compute means Ybar_g and covariance S_g
     Ybar_g <- base::colMeans(dfg)
-    S_g <- var(dfg)
+    S_g <- stats::var(dfg)
 
 
     return(list(Ybar_g = Ybar_g,
@@ -74,6 +74,21 @@ balance_df <- function(df){
     # It also removes observations with missing y
 
     #It then removes observations i for which data is not available for all t
+
+  # Let's make sure we have columns with name i, t, y and g
+  colnames_df <- colnames(df)
+  if(!"i" %in% colnames_df){
+    stop("There is no column `i` in the data. Recall that the unit/individual identifier must be called `i`.")
+  }
+  if(!"t" %in% colnames_df){
+    stop("There is no column `t` in the data. Recall that the time identifier must be called `t`.")
+  }
+  if(!"g" %in% colnames_df){
+    stop("There is no column `g` in the data. Recall that the cohort/group indicator must be called `g`.")
+  }
+  if(!"y" %in% colnames_df){
+    stop("There is no column `y` in the data. Recall that the outcome of interest must be called `y`.")
+  }
 
 
   numPeriods <- length(unique(df$t))
@@ -119,10 +134,13 @@ compute_Thetahat0 <- function(Ybar_g_list,
   return(Thetahat0)
 }
 
-#' @export
+
 #' @title Compute Xhat of pre-treatment differences
 #' @description \code{compute_Xhat} computes the vector Xhat of pre-treatment differences given the list of cohort means
 #' Ybar_g_list and the list of matrices A_0_list
+#' @param Ybar_g_list Ybar_g_list
+#' @param A_0_list A_0_list
+
 compute_Xhat <- function(Ybar_g_list, A_0_list){
   A_0_Ybar_list <- purrr::map2(.x = Ybar_g_list,
                                .y = A_0_list,
@@ -132,9 +150,16 @@ compute_Xhat <- function(Ybar_g_list, A_0_list){
   return(Xhat)
 }
 
-#' @export
+
 #' @title  Plug-in efficient Beta hat
 #' @description \code{compute_Betastar} computes the plug-in efficient betahat
+#' @param Ybar_g_list Ybar_g_list
+#' @param A_theta_list A_theta_list
+#' @param A_0_list A_0_list
+#' @param S_g_list S_g_list
+#' @param N_g_list N_g_list
+#' @param Xvar_list Xvar_list
+#'
 compute_Betastar <- function(Ybar_g_list,
                              A_theta_list,
                              A_0_list,
@@ -291,10 +316,10 @@ compute_se_Thetahat_beta <- function(beta,
                                      g_list,
                                      t_list,
                                      Xvar_list = NULL,
-                                     return_beta_sum = F){
+                                     return_beta_sum = FALSE){
 
   #This function computes the standard error, using the version sigma_** that adjust for pre-treatment covariates
-  # If return_beta_sum = T, it returns a list wit
+  # If return_beta_sum = TRUE, it returns a list wit
 
   seConservative <- compute_se_Thetahat_beta_conservative(beta,
                                                           Ybar_g_list,
@@ -377,10 +402,13 @@ compute_se_Thetahat_beta <- function(beta,
   }
 }
 
-#' @export
+
 #' @title create_A0_list
 #' @description \code{create_A0_list} creates the list of A_0 matrices for Xhat corresponding with all possible
 #' comparisons of cohorts before they are treated
+#' @param g_list g_list
+#' @param t_list t_list
+
 create_A0_list <- function(g_list,
                            t_list){
 
@@ -489,7 +517,7 @@ create_Atheta_list_for_ATE_tg <- function(t,
                                           g_list,
                                           t_list,
                                           N_g_list,
-                                          use_last_treated_only = F,
+                                          use_last_treated_only = FALSE,
                                           showWarnings = TRUE){
   numPeriods <- length(t_list)
   if(t < g & showWarnings){warning("t is less than g. ATE(t,g) is zero by assumption")}
@@ -570,7 +598,7 @@ create_Atheta_list_for_event_study <- function(eventTime,
                                                g_list,
                                                t_list,
                                                N_g_list,
-                                               use_last_treated_only = F){
+                                               use_last_treated_only = FALSE){
 
   #Create A_thetas for an ``event-study'' coefficient at lag eventTime
   # This is the average treatment effects for units eventTime periods after first being treated
@@ -614,7 +642,7 @@ create_Atheta_list_for_ATE_calendar_t <- function(t,
                                                   g_list,
                                                   t_list,
                                                   N_g_list,
-                                                  use_last_treated_only = F){
+                                                  use_last_treated_only = FALSE){
 
   treated_by_t_indices <- which(g_list <= t)
   N_total_treated <- sum( unlist(N_g_list[treated_by_t_indices]) )
@@ -646,7 +674,7 @@ create_Atheta_list_for_ATE_cohort_g <- function(g,
                                                 g_list,
                                                 t_list,
                                                 N_g_list,
-                                                use_last_treated_only = F){
+                                                use_last_treated_only = FALSE){
 
   treated_period_indices <- which(t_list >= g & t_list < max(g_list))
   T_treated <- length( t_list[treated_period_indices] )
@@ -678,7 +706,7 @@ create_Atheta_list_for_ATE_cohort_g <- function(g,
 create_Atheta_list_for_cohort_average_ATE <- function(g_list,
                                                       t_list,
                                                       N_g_list,
-                                                      use_last_treated_only = F){
+                                                      use_last_treated_only = FALSE){
 
   g_eligible_index <-  which((g_list < max(g_list)) & (g_list <= max(t_list)))
 
@@ -707,7 +735,7 @@ create_Atheta_list_for_cohort_average_ATE <- function(g_list,
 create_Atheta_list_for_calendar_average_ATE <- function(g_list,
                                                         t_list,
                                                         N_g_list,
-                                                        use_last_treated_only = F){
+                                                        use_last_treated_only = FALSE){
 
   t_eligible_index <-  which((t_list >= min(g_list)) & (t_list < max(g_list)))
 
@@ -731,11 +759,10 @@ create_Atheta_list_for_calendar_average_ATE <- function(g_list,
 }
 
 
-#' @export
 create_Atheta_list_for_simple_average_ATE <- function(g_list,
                                                       t_list,
                                                       N_g_list,
-                                                      use_last_treated_only = F){
+                                                      use_last_treated_only = FALSE){
 
   #Create a df with all the (g,t) pairs for which ATE is identified
   gt_df <- purrr::cross_df( list(g = g_list, t = t_list) )
@@ -805,7 +832,6 @@ calculate_full_vcv <- function(eventPlotResultsList, resultsDF){
 
 
 
-#' @export
 #' @useDynLib staggered
 #' @importFrom magrittr "%>%"
 #' @title Calculate the efficient adjusted estimator in staggered rollout designs
@@ -815,12 +841,40 @@ calculate_full_vcv <- function(eventPlotResultsList, resultsDF){
 #' @param A_theta_list This parameter allows for specifying a custom estimand, and should be left as NULL if estimand is specified. It is a list of matrices A_theta_g so that the parameter of interest is sum_g A_theta_g Ybar_g, where Ybar_g = 1/N sum_i Y_i(g)
 #' @param A_0_list This parameter allow for specifying the matrices used to construct the Xhat vector of pre-treatment differences. If left NULL, the default is to use the scalar set of controls used in Callaway and Sant'Anna. If use_DiD_A0 = FALSE, then it uses the full vector possible comparisons of (g,g') in periods t<g,g'.
 #' @param eventTime If using estimand = "eventstudy", specify what eventTime you want the event-study parameter for. The default is 0, the period in which treatment occurs. If a vector is provided, estimates are returned for all the event-times in the vector.
-#' @param beta A coefficient to use for covariate adjustment. If not specified, the plug-in optimal coefficient is used. beta =0 corresponds with the simple difference-in-means. beta = 1 corresponds with the Callaway and Sant'Anna estimator when using the default value of use_DiD_A0=T.
+#' @param beta A coefficient to use for covariate adjustment. If not specified, the plug-in optimal coefficient is used. beta =0 corresponds with the simple difference-in-means. beta = 1 corresponds with the Callaway and Sant'Anna estimator when using the default value of use_DiD_A0 = TRUE.
 #' @param use_DiD_A0 If this parameter is true, then Xhat corresponds with the scalar used by Callaway and Sant'Anna, so the Callaway and Sant'Anna estimator corresponds with beta=1. If it is false, the Xhat is a vector with all possible comparisons of pairs of cohorts before either is treated. The latter option should only be used when the number of possible comparisons is small relative to sample size.
 #' @param return_full_vcv If this is true and estimand = "eventstudy", then the function returns a list containing the full variance-covariance matrix for the event-plot estimates in addition to the usual dataframe with the estimates
 #' @param return_matrix_list If true, the function returns a list of the A_0_list and A_theta_list matrices along with betastar. This is used for internal recursive calls to calculate the variance-covariance matrix, and will generally not be needed by the end-user. Default is False.
-#' @param use_last_treated_only If true, then A_0_list and A_theta_list are created to only make comparisons with the last treated cohorts (as suggested by Sun and Abraham), rather than using not-yet-treated units as comparisons. If set to True (and use_DiD_A0 = T), then beta=1 corresponds with the Sun and Abraham estimator.
-#' @return resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = T and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = T, it likewise returns a list containing lists of matrices used in the vcv calculation.)
+#' @param use_last_treated_only If true, then A_0_list and A_theta_list are created to only make comparisons with the last treated cohorts (as suggested by Sun and Abraham), rather than using not-yet-treated units as comparisons. If set to TRUE (and use_DiD_A0 = TRUE), then beta=1 corresponds with the Sun and Abraham estimator.
+#' @return resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = TRUE, it likewise returns a list containing lists of matrices used in the vcv calculation.)
+#' @references
+#' \cite{Roth, Jonatahan, and Sant'Anna, Pedro H. C. (2021),
+#'   'Efficient Estimation for Staggered Rollout Designs', <arXiv:2102.01291>.}
+#' @examples
+#' \dontrun{
+#' # Load some libraries
+#' library(dplyr)
+#' library(purrr)
+#' library(MASS)
+#' # load the officer data
+#' df <- pj_officer_level_balanced
+#' # We modify the data so that the time dimension is named t,
+#' # the period of treatment is named g,
+#' # the outcome is named y,
+#' # and the individual identifiers are named i.
+#' df <- df %>% rename(t = period, y = complaints, g = first_trained, i = uid)
+#' # Calculate efficient estimator for the simple weighted average
+#' staggered(df = df, estimand = "simple")
+#' # Calculate efficient estimator for the cohort weighted average
+#' staggered(df = df, estimand = "cohort")
+#' # Calculate efficient estimator for the calendar weighted average
+#' staggered(df = df, estimand = "calendar")
+#' # Calculate event-study coefficients for the first 24 months
+#' # (month 0 is instantaneous effect)
+#' eventPlotResults <- staggered(df = df, estimand = "eventstudy", eventTime = 0:23)
+#' eventPlotResults %>% head()
+#' }
+#' @export
 staggered <- function(df,
                       estimand = NULL,
                       A_theta_list = NULL,
@@ -830,10 +884,13 @@ staggered <- function(df,
                       use_DiD_A0 = ifelse(is.null(A_0_list),
                                           TRUE,
                                           FALSE),
-                      return_full_vcv = F,
-                      return_matrix_list = F,
-                      use_last_treated_only = F){
+                      return_full_vcv = FALSE,
+                      return_matrix_list = FALSE,
+                      use_last_treated_only = FALSE){
 
+
+  #Balance the panel (and throw a warning if original panel is unbalanced)
+  df <- balance_df(df)
 
   #  If estimand is provided, force to be lower-case (allowing for non-case sensitive inputs)
   if(!is.null(estimand)){
@@ -857,7 +914,7 @@ staggered <- function(df,
                                      eventTime = .x,
                                      beta = beta,
                                      use_DiD_A0 = use_DiD_A0,
-                                     return_matrix_list = T,
+                                     return_matrix_list = TRUE,
                                      use_last_treated_only = use_last_treated_only))
 
     resultsDF <- purrr::reduce(.x = purrr::map(.x = eventPlotResultsList, .f = ~ .x$resultsDF),
@@ -929,7 +986,7 @@ staggered <- function(df,
   if(use_DiD_A0){
 
     if(is.null(estimand)){
-      stop("If use_DiD_A0 =TRUE, you must provide an estimand.")
+      stop("If use_DiD_A0 = TRUE, you must provide an estimand.")
       }
 
     if(estimand == "simple"){
@@ -1001,7 +1058,7 @@ staggered <- function(df,
                                  g_list,
                                  t_list,
                                  Xvar_list = Xvar_list,
-                                 return_beta_sum = T
+                                 return_beta_sum = TRUE
                                  )
 
   se <- seResults$se
@@ -1011,7 +1068,7 @@ staggered <- function(df,
                    se_neyman = se_neyman)
 
   if(!return_matrix_list){
-    #If return_matrix_list is not specified, then we return results DF unless return_full_vcv =T
+    #If return_matrix_list is not specified, then we return results DF unless return_full_vcv = TRUE
     if(!return_full_vcv){
       return(resultsDF)
     }else{
@@ -1042,9 +1099,9 @@ staggered <- function(df,
 
 
 
-#' @export
+
 #' @title Calculate the Callaway & Sant'Anna (2020) estimator for staggered rollouts
-#' @description This functions calculates the Callaway & Sant'Anna (2020) estimator for staggered rollout designs using not-yet-treated units (including never-treated, if availabe) as controls.
+#' @description This functions calculates the Callaway & Sant'Anna (2020) estimator for staggered rollout designs using not-yet-treated units (including never-treated, if available) as controls.
 #' @param df A data frame containing panel data with the variables y (an outcome), i (an individual identifier), t (the period in which the outcome is observe), g (the period in which i is first treated, with Inf denoting never treated)
 #' @param estimand The estimand to be calculated: "simple" averages all treated (t,g) combinations with weights proportional to N_g; "cohort" averages the ATEs for each cohort g, and then takes an N_g-weighted average across g; "calendar" averages ATEs for each time period, weighted by N_g for treated units, and then averages across time. "eventstudy" returns the average effect at the ''event-time'' given in the parameter EventTime.  The parameter can be left blank if a custom parameter is provided in A_theta_list. The argument is not case-sensitive.
 #' @param A_theta_list This parameter allows for specifying a custom estimand, and should be left as NULL if estimand is specified. It is a list of matrices A_theta_g so that the parameter of interest is sum_g A_theta_g Ybar_g, where Ybar_g = 1/N sum_i Y_i(g)
@@ -1052,15 +1109,46 @@ staggered <- function(df,
 #' @param eventTime If using estimand = "eventstudy", specify what eventTime you want the event-study parameter for. The default is 0, the period in which treatment occurs. If a vector is provided, estimates are returned for all the event-times in the vector.
 #' @param return_full_vcv If this is true and estimand = "eventstudy", then the function returns a list containing the full variance-covariance matrix for the event-plot estimates in addition to the usual dataframe with the estimates
 #' @param return_matrix_list If true, the function returns a list of the A_0_list and A_theta_list matrices along with betastar. This is used for internal recursive calls to calculate the variance-covariance matrix, and will generally not be needed by the end-user. Default is False.
-#' @return resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = T and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = T, it likewise returns a list containing lists of matrices used in the vcv calculation.)
+#' @return resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = TRUE, it likewise returns a list containing lists of matrices used in the vcv calculation.)
+#' @references
+#'   \cite{Callaway, Brantly, and Sant'Anna, Pedro H. C. (2020),
+#'   'Difference-in-Differences with Multiple Time Periods', Forthcoming at the Journal of Econometrics,
+#'   \doi{10.1016/j.jeconom.2020.12.001}.}
+#' @examples
+#' \dontrun{
+#' # Load some libraries
+#' library(dplyr)
+#' library(purrr)
+#' library(MASS)
+#' # load the officer data
+#' df <- pj_officer_level_balanced
+#' # We modify the data so that the time dimension is named t,
+#' # the period of treatment is named g,
+#' # the outcome is named y,
+#' # and the individual identifiers are named i.
+#' df <- df %>% rename(t = period, y = complaints, g = first_trained, i = uid)
+#' # Calculate Callaway and Sant'Anna estimator for the simple weighted average
+#' staggered_cs(df = df, estimand = "simple")
+#' # Calculate Callaway and Sant'Anna estimator for the cohort weighted average
+#' staggered_cs(df = df, estimand = "cohort")
+#' # Calculate Callaway and Sant'Anna estimator for the calendar weighted average
+#' staggered_cs(df = df, estimand = "calendar")
+#' # Calculate Callaway and Sant'Anna event-study coefficients for the first 24 months
+#' # (month 0 is instantaneous effect)
+#' eventPlotResults <- staggered_cs(df = df, estimand = "eventstudy", eventTime = 0:23)
+#' eventPlotResults %>% head()
+#' }
+#' @export
 staggered_cs <- function(df,
                       estimand = NULL,
                       A_theta_list = NULL,
                       A_0_list = NULL,
                       eventTime = 0,
-                      return_full_vcv = F,
-                      return_matrix_list = F){
+                      return_full_vcv = FALSE,
+                      return_matrix_list = FALSE){
 
+  #Balance the panel (and throw a warning if original panel is unbalanced)
+  df <- balance_df(df)
 
   #Drop units who has g= < min(t), since ATT(t,g) is not identified for these units
   TreatedBeforeMinT <- df$g <= min(df$t)
@@ -1075,8 +1163,8 @@ staggered_cs <- function(df,
                        A_theta_list = A_theta_list,
                        eventTime = eventTime,
                        beta = 1,
-                       use_DiD_A0 = T,
-                       use_last_treated_only = F,
+                       use_DiD_A0 = TRUE,
+                       use_last_treated_only = FALSE,
                        return_full_vcv = return_full_vcv,
                        return_matrix_list = return_matrix_list)
 
@@ -1086,7 +1174,7 @@ staggered_cs <- function(df,
 
 
 
-#' @export
+
 #' @title Calculate the Sun & Abraham (2020) estimator for staggered rollouts
 #' @description This functions calculates the Sun & Abraham (2020) estimator for staggered rollout designs using last-treated-treated units (never-treated, if availabe) as controls.
 #' @param df A data frame containing panel data with the variables y (an outcome), i (an individual identifier), t (the period in which the outcome is observe), g (the period in which i is first treated, with Inf denoting never treated)
@@ -1096,15 +1184,46 @@ staggered_cs <- function(df,
 #' @param eventTime If using estimand = "eventstudy", specify what eventTime you want the event-study parameter for. The default is 0, the period in which treatment occurs. If a vector is provided, estimates are returned for all the event-times in the vector.
 #' @param return_full_vcv If this is true and estimand = "eventstudy", then the function returns a list containing the full variance-covariance matrix for the event-plot estimates in addition to the usual dataframe with the estimates
 #' @param return_matrix_list If true, the function returns a list of the A_0_list and A_theta_list matrices along with betastar. This is used for internal recursive calls to calculate the variance-covariance matrix, and will generally not be needed by the end-user. Default is False.
-#' @return resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = T and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = T, it likewise returns a list containing lists of matrices used in the vcv calculation.)
+#' @return resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = TRUE, it likewise returns a list containing lists of matrices used in the vcv calculation.)
+#' @references
+#'   \cite{Sun, Liyang, and Abraham, Sarah (2020),
+#'   'Estimating dynamic treatment effects in event studies with heterogeneous treatment effects', Forthcoming at the Journal of Econometrics,
+#'   \doi{10.1016/j.jeconom.2020.09.006}.}
+#' @examples
+#' \dontrun{
+#' # Load some libraries
+#' library(dplyr)
+#' library(purrr)
+#' library(MASS)
+#' # load the officer data
+#' df <- pj_officer_level_balanced
+#' # We modify the data so that the time dimension is named t,
+#' # the period of treatment is named g,
+#' # the outcome is named y,
+#' # and the individual identifiers are named i.
+#' df <- df %>% rename(t = period, y = complaints, g = first_trained, i = uid)
+#' # Calculate Sun and Abraham estimator for the simple weighted average
+#' staggered_sa(df = df, estimand = "simple")
+#' # Calculate Sun and Abraham estimator for the cohort weighted average
+#' staggered_sa(df = df, estimand = "cohort")
+#' # Calculate Sun and Abraham estimator for the calendar weighted average
+#' staggered_sa(df = df, estimand = "calendar")
+#' # Calculate Sun and Abraham event-study coefficients for the first 24 months
+#' # (month 0 is instantaneous effect)
+#' eventPlotResults <- staggered_sa(df = df, estimand = "eventstudy", eventTime = 0:23)
+#' eventPlotResults %>% head()
+#' }
+#' @export
 staggered_sa <- function(df,
                          estimand = NULL,
                          A_theta_list = NULL,
                          A_0_list = NULL,
                          eventTime = 0,
-                         return_full_vcv = F,
-                         return_matrix_list = F){
+                         return_full_vcv = FALSE,
+                         return_matrix_list = FALSE){
 
+  #Balance the panel (and throw a warning if original panel is unbalanced)
+  df <- balance_df(df)
 
   #Drop units who has g= < min(t), since ATT(t,g) is not identified for these units
   TreatedBeforeMinT <- df$g <= min(df$t)
@@ -1119,8 +1238,8 @@ staggered_sa <- function(df,
                          A_theta_list = A_theta_list,
                          eventTime = eventTime,
                          beta = 1,
-                         use_DiD_A0 = T,
-                         use_last_treated_only = T,
+                         use_DiD_A0 = TRUE,
+                         use_last_treated_only = TRUE,
                          return_full_vcv = return_full_vcv,
                          return_matrix_list = return_matrix_list)
 
