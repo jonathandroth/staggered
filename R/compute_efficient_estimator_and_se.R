@@ -82,12 +82,7 @@ balance_df <- function(df){
 
 
   ##Check that (i,t) is a unique identifier
-  it_counts <-
-    df %>%
-    dplyr::group_by(i,t) %>%
-    dplyr::summarise(n = n())
-
-  if(max(it_counts$n) > 1 ){
+  if(anyDuplicated(df[c("i","t")]) > 0 ){
     stop("There are multiple observations with the same (i,t) values. The panel should have a unique outcome for each (i,t) value.")
   }
 
@@ -1211,50 +1206,7 @@ staggered_cs <- function(df,
                          eventTime = 0,
                          return_full_vcv = FALSE,
                          return_matrix_list = FALSE){
-  # Let's make sure we have columns with name i, t, y and g
-  colnames_df <- colnames(df)
-  if(!i %in% colnames_df){
-    stop(paste0("There is no column ", i, " in the data. Thus, we are not able to find the unit identifier variable."))
-  }
-  if(!t %in% colnames_df){
-    stop(paste0("There is no column ", t, " in the data. Thus, we are not able to find the time identifier variable."))
-  }
-  if(!g %in% colnames_df){
-    stop(paste0("There is no column ", g, " in the data. Thus, we are not able to find the group identifier variable."))
-  }
-  if(!y %in% colnames_df){
-    stop(paste0("There is no column ", y, " in the data. Thus, we are not able to find the outcome variable."))
-  }
 
-  # Sanity checks
-  if(i %in% c("g", "t", "y" )){
-    stop(paste0("Unit identifier cannot be labeled g, t, or y"))
-  }
-
-  if(t %in% c("i","y", "g" )){
-    stop(paste0("Time identifier cannot be labeled i, g, or y"))
-  }
-
-  if(g %in% c("i", "t" ,"y" )){
-    stop(paste0("Group identifier cannot be labeled i, t, or y"))
-  }
-
-  # Re-label i, t, g, y
-  if(i != "i"){
-    df[,"i"] <- df[,i]
-  }
-
-  if(t != "t"){
-    df[, "t"] <- df[,t]
-  }
-
-  if(g != "g"){
-    df[, "g"] <-  df[,g]
-  }
-
-  if(y != "y"){
-    df[, "y"] <- df[,y]
-  }
   #Balance the panel (and throw a warning if original panel is unbalanced)
   df <- balance_df(df)
 
@@ -1265,16 +1217,19 @@ staggered_cs <- function(df,
     warning("Dropping units who were treated in the first period or earlier, since CS estimator is not defined (and ATT(t,g) not identified under parallel trends).")
   }
 
-  results <-
-    staggered::staggered(df = df,
-                         estimand = estimand,
-                         A_theta_list = A_theta_list,
-                         eventTime = eventTime,
-                         beta = 1,
-                         use_DiD_A0 = TRUE,
-                         use_last_treated_only = FALSE,
-                         return_full_vcv = return_full_vcv,
-                         return_matrix_list = return_matrix_list)
+  results <- staggered(df = df,
+                       i = i,
+                       t = t,
+                       g = g,
+                       y = y,
+                       estimand = estimand,
+                       A_theta_list = A_theta_list,
+                       eventTime = eventTime,
+                       beta = 1,
+                       use_DiD_A0 = TRUE,
+                       use_last_treated_only = FALSE,
+                       return_full_vcv = return_full_vcv,
+                       return_matrix_list = return_matrix_list)
 
   return(results)
 
@@ -1338,50 +1293,7 @@ staggered_sa <- function(df,
                          eventTime = 0,
                          return_full_vcv = FALSE,
                          return_matrix_list = FALSE){
-  # Let's make sure we have columns with name i, t, y and g
-  colnames_df <- colnames(df)
-  if(!i %in% colnames_df){
-    stop(paste0("There is no column ", i, " in the data. Thus, we are not able to find the unit identifier variable."))
-  }
-  if(!t %in% colnames_df){
-    stop(paste0("There is no column ", t, " in the data. Thus, we are not able to find the time identifier variable."))
-  }
-  if(!g %in% colnames_df){
-    stop(paste0("There is no column ", g, " in the data. Thus, we are not able to find the group identifier variable."))
-  }
-  if(!y %in% colnames_df){
-    stop(paste0("There is no column ", y, " in the data. Thus, we are not able to find the outcome variable."))
-  }
 
-  # Sanity checks
-  if(i %in% c("g", "t", "y" )){
-    stop(paste0("Unit identifier cannot be labeled g, t, or y"))
-  }
-
-  if(t %in% c("i","y", "g" )){
-    stop(paste0("Time identifier cannot be labeled i, g, or y"))
-  }
-
-  if(g %in% c("i", "t" ,"y" )){
-    stop(paste0("Group identifier cannot be labeled i, t, or y"))
-  }
-
-  # Re-label i, t, g, y
-  if(i != "i"){
-    df[,"i"] <- df[,i]
-  }
-
-  if(t != "t"){
-    df[, "t"] <- df[,t]
-  }
-
-  if(g != "g"){
-    df[, "g"] <-  df[,g]
-  }
-
-  if(y != "y"){
-    df[, "y"] <- df[,y]
-  }
   #Balance the panel (and throw a warning if original panel is unbalanced)
   df <- balance_df(df)
 
@@ -1392,16 +1304,19 @@ staggered_sa <- function(df,
     warning("Dropping units who were treated in the first period or earlier, since SA estimator is not defined (and ATT(t,g) not identified under parallel trends).")
   }
 
-  results <-
-    staggered::staggered(df = df,
-                         estimand = estimand,
-                         A_theta_list = A_theta_list,
-                         eventTime = eventTime,
-                         beta = 1,
-                         use_DiD_A0 = TRUE,
-                         use_last_treated_only = TRUE,
-                         return_full_vcv = return_full_vcv,
-                         return_matrix_list = return_matrix_list)
+  results <- staggered(df = df,
+                       i = i,
+                       t = t,
+                       g = g,
+                       y = y,
+                       estimand = estimand,
+                       A_theta_list = A_theta_list,
+                       eventTime = eventTime,
+                       beta = 1,
+                       use_DiD_A0 = TRUE,
+                       use_last_treated_only = TRUE,
+                       return_full_vcv = return_full_vcv,
+                       return_matrix_list = return_matrix_list)
 
   return(results)
 
