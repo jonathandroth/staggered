@@ -848,7 +848,7 @@ calculate_full_vcv <- function(eventPlotResultsList, resultsDF){
 #' library(purrr)
 #' library(MASS)
 #' # load the officer data
-#' df <- data(pj_officer_level_balanced)
+#' df <- pj_officer_level_balanced
 #' # Calculate efficient estimator for the simple weighted average
 #' staggered(df = df,
 #'   i = "uid",
@@ -1181,7 +1181,7 @@ staggered <- function(df,
 #' library(purrr)
 #' library(MASS)
 #' # load the officer data
-#' df <- data(pj_officer_level_balanced)
+#' df <- pj_officer_level_balanced
 #' # We modify the data so that the time dimension is named t,
 #' # the period of treatment is named g,
 #' # the outcome is named y,
@@ -1308,7 +1308,7 @@ staggered_cs <- function(df,
 #' library(purrr)
 #' library(MASS)
 #' # load the officer data
-#' df <- data(pj_officer_level_balanced)
+#' df <- pj_officer_level_balanced
 #' # We modify the data so that the time dimension is named t,
 #' # the period of treatment is named g,
 #' # the outcome is named y,
