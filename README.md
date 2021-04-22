@@ -4,7 +4,6 @@
 # staggered
 
 <!-- badges: start -->
-
 <!-- badges: end -->
 
 The staggered R package computes the efficient estimator for settings
@@ -46,6 +45,7 @@ for modifying and plotting the results.
 ``` r
 library(staggered) #load the staggered package
 library(dplyr) #load dplyr for data manipulation
+#> Warning: package 'dplyr' was built under R version 4.0.2
 #> 
 #> Attaching package: 'dplyr'
 #> The following objects are masked from 'package:stats':
@@ -55,17 +55,10 @@ library(dplyr) #load dplyr for data manipulation
 #> 
 #>     intersect, setdiff, setequal, union
 library(ggplot2) #load ggplot2 for plotting the results
+#> Warning: package 'ggplot2' was built under R version 4.0.2
 library(purrr)
 
 df <- staggered::pj_officer_level_balanced #load the officer data
-```
-
-We modify the data so that the time dimension is named t, the period of
-treatment is named g, the outcome is named y, and the individual
-identifiers are named i.
-
-``` r
-df <- df %>% rename(t = period, y = complaints, g = first_trained, i = uid)
 ```
 
 ### Simple aggregate parameters
@@ -81,21 +74,36 @@ aggregation schemes).
 
 ``` r
 #Calculate efficient estimator for the simple weighted average
-staggered(df = df, estimand = "simple")
+staggered(df = df, 
+          i = "uid",
+          t = "period",
+          g = "first_trained",
+          y = "complaints", 
+          estimand = "simple")
 #>       estimate          se   se_neyman
 #> 1 -0.001126981 0.002115194 0.002119248
 ```
 
 ``` r
 #Calculate efficient estimator for the cohort weighted average
-staggered(df = df, estimand = "cohort") 
+staggered(df = df, 
+          i = "uid",
+          t = "period",
+          g = "first_trained",
+          y = "complaints", 
+          estimand = "cohort") 
 #>       estimate          se   se_neyman
 #> 1 -0.001084689 0.002261011 0.002264876
 ```
 
 ``` r
 #Calculate efficient estimator for the calendar weighted average
-staggered(df = df, estimand = "calendar")
+staggered(df = df, 
+          i = "uid",
+          t = "period",
+          g = "first_trained",
+          y = "complaints", 
+          estimand = "calendar")
 #>      estimate         se   se_neyman
 #> 1 -0.00187198 0.00255863 0.002561472
 ```
@@ -107,7 +115,13 @@ average-treatment effect at each lag since treatment.
 
 ``` r
 #Calculate event-study coefficients for the first 24 months (month 0 is instantaneous effect)
-eventPlotResults <- staggered(df = df, estimand = "eventstudy", eventTime = 0:23)
+eventPlotResults <- staggered(df = df,         
+                              i = "uid",
+                              t = "period",
+                              g = "first_trained",
+                              y = "complaints", 
+                              estimand = "eventstudy", 
+                              eventTime = 0:23)
   
 eventPlotResults %>% head()
 #>        estimate          se   se_neyman eventTime
@@ -131,7 +145,7 @@ eventPlotResults %>%
   ggtitle("Effect of Procedural Justice Training on Officer Complaints")
 ```
 
-<img src="man/figures/README-unnamed-chunk-8-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-7-1.png" width="100%" />
 
 ### Other Estimators
 
@@ -143,14 +157,24 @@ estimator:
 
 ``` r
 #Calculate Callaway and Sant'Anna estimator for the simple weighted average
-staggered_cs(df = df, estimand = "simple")
+staggered_cs(df = df, 
+             i = "uid",
+             t = "period",
+             g = "first_trained",
+             y = "complaints", 
+             estimand = "simple")
 #>       estimate          se   se_neyman
 #> 1 -0.005176818 0.003928735 0.003930919
 ```
 
 ``` r
 #Calculate Sun and Abraham estimator for the simple weighted average
-staggered_sa(df = df, estimand = "simple")
+staggered_sa(df = df, 
+             i = "uid",
+             t = "period",
+             g = "first_trained",
+             y = "complaints", 
+             estimand = "simple")
 #>     estimate         se  se_neyman
 #> 1 0.01153851 0.01730161 0.01730234
 ```

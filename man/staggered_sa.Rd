@@ -6,16 +6,28 @@
 \usage{
 staggered_sa(
   df,
+  i = "i",
+  t = "t",
+  g = "g",
+  y = "y",
   estimand = NULL,
   A_theta_list = NULL,
   A_0_list = NULL,
   eventTime = 0,
-  return_full_vcv = F,
-  return_matrix_list = F
+  return_full_vcv = FALSE,
+  return_matrix_list = FALSE
 )
 }
 \arguments{
 \item{df}{A data frame containing panel data with the variables y (an outcome), i (an individual identifier), t (the period in which the outcome is observe), g (the period in which i is first treated, with Inf denoting never treated)}
+
+\item{i}{The name of column containing the individual (cross-sectional unit) identifier. Default is "i".}
+
+\item{t}{The name of the column containing the time periods. Default is "t".}
+
+\item{g}{The name of the column containing the first period when a particular observation is treated, with Inf denoting never treated. Default is "g".}
+
+\item{y}{The name of the column containing the outcome variable. Default is "y".}
 
 \item{estimand}{The estimand to be calculated: "simple" averages all treated (t,g) combinations with weights proportional to N_g; "cohort" averages the ATEs for each cohort g, and then takes an N_g-weighted average across g; "calendar" averages ATEs for each time period, weighted by N_g for treated units, and then averages across time. "eventstudy" returns the average effect at the ''event-time'' given in the parameter EventTime.  The parameter can be left blank if a custom parameter is provided in A_theta_list. The argument is not case-sensitive.}
 
@@ -30,8 +42,39 @@ staggered_sa(
 \item{return_matrix_list}{If true, the function returns a list of the A_0_list and A_theta_list matrices along with betastar. This is used for internal recursive calls to calculate the variance-covariance matrix, and will generally not be needed by the end-user. Default is False.}
 }
 \value{
-resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = T and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = T, it likewise returns a list containing lists of matrices used in the vcv calculation.)
+resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = TRUE, it likewise returns a list containing lists of matrices used in the vcv calculation.)
 }
 \description{
 This functions calculates the Sun & Abraham (2020) estimator for staggered rollout designs using last-treated-treated units (never-treated, if availabe) as controls.
+}
+\examples{
+\dontrun{
+# Load some libraries
+library(dplyr)
+library(purrr)
+library(MASS)
+# load the officer data
+df <- pj_officer_level_balanced
+# We modify the data so that the time dimension is named t,
+# the period of treatment is named g,
+# the outcome is named y,
+# and the individual identifiers are named i
+#  (this allow us to use default arguments on \code{staggered_cs}).
+df <- df \%>\% rename(t = period, y = complaints, g = first_trained, i = uid)
+# Calculate Sun and Abraham estimator for the simple weighted average
+staggered_sa(df = df, estimand = "simple")
+# Calculate Sun and Abraham estimator for the cohort weighted average
+staggered_sa(df = df, estimand = "cohort")
+# Calculate Sun and Abraham estimator for the calendar weighted average
+staggered_sa(df = df, estimand = "calendar")
+# Calculate Sun and Abraham event-study coefficients for the first 24 months
+# (month 0 is instantaneous effect)
+eventPlotResults <- staggered_sa(df = df, estimand = "eventstudy", eventTime = 0:23)
+eventPlotResults \%>\% head()
+}
+}
+\references{
+\cite{Sun, Liyang, and Abraham, Sarah (2020),
+'Estimating dynamic treatment effects in event studies with heterogeneous treatment effects', Forthcoming at the Journal of Econometrics,
+\doi{10.1016/j.jeconom.2020.09.006}.}
 }
