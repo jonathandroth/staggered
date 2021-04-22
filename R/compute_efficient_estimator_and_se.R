@@ -80,12 +80,13 @@ balance_df <- function(df){
 
 
   ##Check that (i,t) is a unique identifier
-  it_counts <-
-    df %>%
-      dplyr::group_by(i,t) %>%
-      dplyr::summarise(n = n())
+  # it_counts <-
+  #   df %>%
+  #     dplyr::group_by(i,t) %>%
+  #     dplyr::summarise(n = n())
 
-  if(max(it_counts$n) > 1 ){
+  #if(max(it_counts$n) > 1 ){
+  if(anyDuplicated(df[c("i","t")]) > 0 ){
     stop("There are multiple observations with the same (i,t) values. The panel should have a unique outcome for each (i,t) value.")
   }
 
@@ -832,7 +833,8 @@ staggered <- function(df,
                                           FALSE),
                       return_full_vcv = F,
                       return_matrix_list = F,
-                      use_last_treated_only = F){
+                      use_last_treated_only = F,
+                      compute_fisher = F){
 
 
   #  If estimand is provided, force to be lower-case (allowing for non-case sensitive inputs)
@@ -858,7 +860,8 @@ staggered <- function(df,
                                      beta = beta,
                                      use_DiD_A0 = use_DiD_A0,
                                      return_matrix_list = T,
-                                     use_last_treated_only = use_last_treated_only))
+                                     use_last_treated_only = use_last_treated_only,
+                                     compute_fisher = compute_fisher))
 
     resultsDF <- purrr::reduce(.x = purrr::map(.x = eventPlotResultsList, .f = ~ .x$resultsDF),
                                .f = bind_rows)
@@ -1010,6 +1013,51 @@ staggered <- function(df,
                    se = se,
                    se_neyman = se_neyman)
 
+  ## Do FRT, if specified
+  permuteTreatment <- function(df,seed){
+    #This function takes a data.frame with columns i and g, and permutes the values of g assigned to i
+
+    #Subset to first period so that we have one observation per unit
+      #XX this assumes balanced panel. Make sure you balance before doing this
+    first_period_df <- df %>% dplyr::filter(t == min(t)) %>% dplyr::select(i,g)
+
+    #Draw a random permutation of the elements of first_period_df
+    set.seed(seed)
+    n = NROW(first_period_df)
+    randIndex <-
+      sample.int(n = n,
+                 size = n,
+                 replace = F)
+
+    #Replace first_period_df$g with a permuted version based on randIndex
+    first_period_df$g <- first_period_df$g[randIndex]
+
+    #Merge the new treatment assignments back with the original
+    df <- dplyr::left_join(df %>% dplyr::select(-g),
+                           first_period_df,
+                           by = c("i"))
+
+    return(df)
+  }
+
+  if(compute_fisher){
+    FRTResults <-
+      purrr::map_dfr(.x = 1:50,
+                     .f = ~ staggered::staggered(df = permuteTreatment(df, seed = .x),
+                                                 estimand = "estimand",
+                                                 A_theta_list = A_theta_list,
+                                                 A_0_list = A_0_list,
+                                                 eventTime = eventTime,
+                                                 return_full_vcv = F,
+                                                 return_matrix_list = F,
+                                                 compute_fisher = F) %>%
+                            mutate(seed = .x)
+                      )
+
+    resultsDF$fisher_pval <- mean( abs(resultsDF$estimate/resultsDF$se) < abs(FRTResults$estimate/FRTResults$se) )
+    resultsDF$fisher_pval_se_neyman <- mean( abs(resultsDF$estimate/resultsDF$se_neyman) < abs(FRTResults$estimate/FRTResults$se_neyman) )
+
+  }
   if(!return_matrix_list){
     #If return_matrix_list is not specified, then we return results DF unless return_full_vcv =T
     if(!return_full_vcv){
