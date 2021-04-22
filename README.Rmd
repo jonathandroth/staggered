@@ -164,4 +164,4 @@ The syntax for staggered_stata is very similar to that for the staggered R packa
 
 ![Stata examples.](man/figures/Stata_screenshot.png)
 
-The staggered, staggered_cs, and staggered_as commands all return a vector of coefficients and covariance matrix in ereturn list, and thus can be used with any post-estimation command in Stata (e.g. coefplot).
+The staggered, staggered_cs, and staggered_as commands all return a vector of coefficients and covariance matrix in ereturn list, and thus can be used with any post-estimation command in Stata (e.g. coefplot). 

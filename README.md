@@ -4,6 +4,7 @@
 # staggered
 
 <!-- badges: start -->
+
 <!-- badges: end -->
 
 The staggered R package computes the efficient estimator for settings
@@ -45,7 +46,6 @@ for modifying and plotting the results.
 ``` r
 library(staggered) #load the staggered package
 library(dplyr) #load dplyr for data manipulation
-#> Warning: package 'dplyr' was built under R version 4.0.2
 #> 
 #> Attaching package: 'dplyr'
 #> The following objects are masked from 'package:stats':
@@ -55,7 +55,7 @@ library(dplyr) #load dplyr for data manipulation
 #> 
 #>     intersect, setdiff, setequal, union
 library(ggplot2) #load ggplot2 for plotting the results
-#> Warning: package 'ggplot2' was built under R version 4.0.2
+#> Warning: package 'ggplot2' was built under R version 4.0.5
 library(purrr)
 
 df <- staggered::pj_officer_level_balanced #load the officer data

@@ -20,7 +20,8 @@ compute_g_level_summaries <- function(df, is_balanced = TRUE){
 
   #Reshape so that Y_{it} is a column for all t
   df <- df  %>%
-    reshape2::dcast(i + g ~ t, value.var = "y") %>%
+    tidyr::pivot_wider(id_cols = c("i","g"), names_from = "t", values_from = "y") %>%
+    ungroup() %>%
     dplyr::select(-i)
 
   compute_Ybar_Sbar_g <- function(g){
@@ -900,6 +901,7 @@ processDF <- function(df, i, g, t, y){
 #' @param return_matrix_list If true, the function returns a list of the A_0_list and A_theta_list matrices along with betastar. This is used for internal recursive calls to calculate the variance-covariance matrix, and will generally not be needed by the end-user. Default is False.
 #' @param use_last_treated_only If true, then A_0_list and A_theta_list are created to only make comparisons with the last treated cohorts (as suggested by Sun and Abraham), rather than using not-yet-treated units as comparisons. If set to TRUE (and use_DiD_A0 = TRUE), then beta=1 corresponds with the Sun and Abraham estimator.
 #' @param compute_fisher If true, computes a Fisher Randomization Test using the studentized estimator.
+#' @param num_fisher_permutations The number of permutations to use in the Fisher Randomization Test (if compute_fisher = TRUE). Default is 500.
 #' @param skip_data_check If true, skips checks that the data is balanced and contains the colums i,t,g,y. Used in internal recursive calls to increase speed, but not recommended for end-user.
 #' @return resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = TRUE, it likewise returns a list containing lists of matrices used in the vcv calculation.)
 #' @references
@@ -963,6 +965,7 @@ staggered <- function(df,
                       return_matrix_list = FALSE,
                       use_last_treated_only = FALSE,
 					            compute_fisher = FALSE,
+					            num_fisher_permutations = 500,
 					            skip_data_check = FALSE){
 
   #Process the inputted df by checking the inputted columns and renaming to i,t,g,y, and balancing on (i,t)
@@ -1156,36 +1159,40 @@ staggered <- function(df,
                           se_neyman = se_neyman)
 
   ## Do FRT, if specified
-  permuteTreatment <- function(df,seed){
+  permuteTreatment <- function(df,i_g_table, seed){
     #This function takes a data.frame with columns i and g, and permutes the values of g assigned to i
-
-    #Subset to first period so that we have one observation per unit
-      #XX this assumes balanced panel. Make sure you balance before doing this
-    first_period_df <- df %>% dplyr::filter(t == min(t)) %>% dplyr::select(i,g)
+    # The input i_g_table has the unique combinations of (i,g) in df, and is calculated outside for speed improvements
 
     #Draw a random permutation of the elements of first_period_df
     set.seed(seed)
-    n = NROW(first_period_df)
+    n = NROW(i_g_table)
     randIndex <-
       sample.int(n = n,
                  size = n,
                  replace = F)
 
     #Replace first_period_df$g with a permuted version based on randIndex
-    first_period_df$g <- first_period_df$g[randIndex]
+    i_g_table$g <- i_g_table$g[randIndex]
 
     #Merge the new treatment assignments back with the original
     df <- dplyr::left_join(df %>% dplyr::select(-g),
-                           first_period_df,
+                           i_g_table,
                            by = c("i"))
 
     return(df)
   }
 
   if(compute_fisher){
+
+    #Find unique pairs of (i,g). This will be used for computing the permutations
+    i_g_table <- df %>%
+                 dplyr::filter(t == min(t)) %>%
+                 dplyr::select(i,g)
+
+
     FRTResults <-
-      purrr::map_dfr(.x = 1:50,
-                     .f = ~ staggered::staggered(df = permuteTreatment(df, seed = .x),
+      purrr::map_dfr(.x = 1:num_fisher_permutations,
+                     .f = ~ staggered::staggered(df = permuteTreatment(df, i_g_table, seed = .x),
                                                  estimand = "estimand",
                                                  A_theta_list = A_theta_list,
                                                  A_0_list = A_0_list,
@@ -1247,6 +1254,10 @@ staggered <- function(df,
 #' @param eventTime If using estimand = "eventstudy", specify what eventTime you want the event-study parameter for. The default is 0, the period in which treatment occurs. If a vector is provided, estimates are returned for all the event-times in the vector.
 #' @param return_full_vcv If this is true and estimand = "eventstudy", then the function returns a list containing the full variance-covariance matrix for the event-plot estimates in addition to the usual dataframe with the estimates
 #' @param return_matrix_list If true, the function returns a list of the A_0_list and A_theta_list matrices along with betastar. This is used for internal recursive calls to calculate the variance-covariance matrix, and will generally not be needed by the end-user. Default is False.
+#' @param compute_fisher If true, computes a Fisher Randomization Test using the studentized estimator.
+#' @param num_fisher_permutations The number of permutations to use in the Fisher Randomization Test (if compute_fisher = TRUE). Default is 500.
+#' @param skip_data_check If true, skips checks that the data is balanced and contains the colums i,t,g,y. Used in internal recursive calls to increase speed, but not recommended for end-user.
+
 #' @return resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = TRUE, it likewise returns a list containing lists of matrices used in the vcv calculation.)
 #' @references
 #'   \cite{Callaway, Brantly, and Sant'Anna, Pedro H. C. (2020),
@@ -1288,56 +1299,21 @@ staggered_cs <- function(df,
                          A_0_list = NULL,
                          eventTime = 0,
                          return_full_vcv = FALSE,
-                         return_matrix_list = FALSE){
+                         return_matrix_list = FALSE,
+                         compute_fisher = FALSE,
+                         num_fisher_permutations = 500,
+                         skip_data_check = FALSE){
 
-  # Let's make sure we have columns with name i, t, y and g
-  colnames_df <- colnames(df)
-  if(!i %in% colnames_df){
-    stop(paste0("There is no column ", i, " in the data. Thus, we are not able to find the unit identifier variable."))
-  }
-  if(!t %in% colnames_df){
-    stop(paste0("There is no column ", t, " in the data. Thus, we are not able to find the time identifier variable."))
-  }
-  if(!g %in% colnames_df){
-    stop(paste0("There is no column ", g, " in the data. Thus, we are not able to find the group identifier variable."))
-  }
-  if(!y %in% colnames_df){
-    stop(paste0("There is no column ", y, " in the data. Thus, we are not able to find the outcome variable."))
+  if(!skip_data_check){
+    df <- processDF(df,
+                    i=i,
+                    g=g,
+                    t=t,
+                    y=y)
+    #Balance the panel (and throw a warning if original panel is unbalanced)
+    df <- balance_df(df = df)
   }
 
-  # Sanity checks
-  if(i %in% c("g", "t", "y" )){
-    stop(paste0("Unit identifier cannot be labeled g, t, or y"))
-  }
-
-  if(t %in% c("i","y", "g" )){
-    stop(paste0("Time identifier cannot be labeled i, g, or y"))
-  }
-
-  if(g %in% c("i", "t" ,"y" )){
-    stop(paste0("Group identifier cannot be labeled i, t, or y"))
-  }
-
-
-  # Re-label i, t, g, y
-  if(i != "i"){
-    df[,"i"] <- df[,i]
-  }
-
-  if(t != "t"){
-    df[, "t"] <- df[,t]
-  }
-
-  if(g != "g"){
-    df[, "g"] <-  df[,g]
-  }
-
-  if(y != "y"){
-    df[, "y"] <- df[,y]
-  }
-
-  #Balance the panel (and throw a warning if original panel is unbalanced)
-  df <- balance_df(df)
 
   #Drop units who has g= < min(t), since ATT(t,g) is not identified for these units
   TreatedBeforeMinT <- df$g <= min(df$t)
@@ -1354,7 +1330,10 @@ staggered_cs <- function(df,
                        use_DiD_A0 = TRUE,
                        use_last_treated_only = FALSE,
                        return_full_vcv = return_full_vcv,
-                       return_matrix_list = return_matrix_list)
+                       return_matrix_list = return_matrix_list,
+                       compute_fisher = compute_fisher,
+                       num_fisher_permutations = num_fisher_permutations,
+                       skip_data_check = skip_data_check)
 
   return(results)
 
@@ -1376,6 +1355,10 @@ staggered_cs <- function(df,
 #' @param eventTime If using estimand = "eventstudy", specify what eventTime you want the event-study parameter for. The default is 0, the period in which treatment occurs. If a vector is provided, estimates are returned for all the event-times in the vector.
 #' @param return_full_vcv If this is true and estimand = "eventstudy", then the function returns a list containing the full variance-covariance matrix for the event-plot estimates in addition to the usual dataframe with the estimates
 #' @param return_matrix_list If true, the function returns a list of the A_0_list and A_theta_list matrices along with betastar. This is used for internal recursive calls to calculate the variance-covariance matrix, and will generally not be needed by the end-user. Default is False.
+#' @param compute_fisher If true, computes a Fisher Randomization Test using the studentized estimator.
+#' @param num_fisher_permutations The number of permutations to use in the Fisher Randomization Test (if compute_fisher = TRUE). Default is 500.
+#' @param skip_data_check If true, skips checks that the data is balanced and contains the colums i,t,g,y. Used in internal recursive calls to increase speed, but not recommended for end-user.
+
 #' @return resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = TRUE, it likewise returns a list containing lists of matrices used in the vcv calculation.)
 #' @references
 #'   \cite{Sun, Liyang, and Abraham, Sarah (2020),
@@ -1417,56 +1400,21 @@ staggered_sa <- function(df,
                          A_0_list = NULL,
                          eventTime = 0,
                          return_full_vcv = FALSE,
-                         return_matrix_list = FALSE){
-
-  # Let's make sure we have columns with name i, t, y and g
-  colnames_df <- colnames(df)
-  if(!i %in% colnames_df){
-    stop(paste0("There is no column ", i, " in the data. Thus, we are not able to find the unit identifier variable."))
-  }
-  if(!t %in% colnames_df){
-    stop(paste0("There is no column ", t, " in the data. Thus, we are not able to find the time identifier variable."))
-  }
-  if(!g %in% colnames_df){
-    stop(paste0("There is no column ", g, " in the data. Thus, we are not able to find the group identifier variable."))
-  }
-  if(!y %in% colnames_df){
-    stop(paste0("There is no column ", y, " in the data. Thus, we are not able to find the outcome variable."))
-  }
-
-  # Sanity checks
-  if(i %in% c("g", "t", "y" )){
-    stop(paste0("Unit identifier cannot be labeled g, t, or y"))
-  }
-
-  if(t %in% c("i","y", "g" )){
-    stop(paste0("Time identifier cannot be labeled i, g, or y"))
-  }
-
-  if(g %in% c("i", "t" ,"y" )){
-    stop(paste0("Group identifier cannot be labeled i, t, or y"))
-  }
+                         return_matrix_list = FALSE,
+                         compute_fisher = FALSE,
+                         num_fisher_permutations = 500,
+                         skip_data_check = FALSE){
 
 
-  # Re-label i, t, g, y
-  if(i != "i"){
-    df[,"i"] <- df[,i]
+  if(!skip_data_check){
+    df <- processDF(df,
+                    i=i,
+                    g=g,
+                    t=t,
+                    y=y)
+    #Balance the panel (and throw a warning if original panel is unbalanced)
+    df <- balance_df(df = df)
   }
-
-  if(t != "t"){
-    df[, "t"] <- df[,t]
-  }
-
-  if(g != "g"){
-    df[, "g"] <-  df[,g]
-  }
-
-  if(y != "y"){
-    df[, "y"] <- df[,y]
-  }
-
-  #Balance the panel (and throw a warning if original panel is unbalanced)
-  df <- balance_df(df)
 
   #Drop units who has g= < min(t), since ATT(t,g) is not identified for these units
   TreatedBeforeMinT <- df$g <= min(df$t)
@@ -1483,7 +1431,10 @@ staggered_sa <- function(df,
                        use_DiD_A0 = TRUE,
                        use_last_treated_only = TRUE,
                        return_full_vcv = return_full_vcv,
-                       return_matrix_list = return_matrix_list)
+                       return_matrix_list = return_matrix_list,
+                       compute_fisher = compute_fisher,
+                       num_fisher_permutations = num_fisher_permutations,
+                       skip_data_check = skip_data_check)
 
   return(results)
 

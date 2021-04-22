@@ -19,7 +19,8 @@ Imports:
     magrittr,
     MASS,
     stats,
-    Rfast
+    Rfast,
+    tidyr
 LinkingTo: 
     Rcpp,
     RcppEigen
