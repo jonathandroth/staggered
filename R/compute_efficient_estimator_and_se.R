@@ -2,27 +2,32 @@
 #' @title Calculate group level summary statistics
 #' @description This function computes the mean-vector and covariance matrix of the outcomes for each cohort, where a cohort g is a group of units first treated in period g
 #' @param df A data frame containing panel data with the variables y (an outcome), i (an individual identifier), t (the period in which the outcome is observe), g (the period in which i is first treated, with Inf denoting never treated)
+#' @param is_balanced If true, the df has previously been balanced so this does not need to be done internally.
 #' @return Y_bar_list A list of the means of the outcomes for each cohort g
 #' @return S_g_list A list of covariance matrices for the outcomes for each cohort g
 #' @return N_g_list A list of the number of observations for each cohort g
 #' @return g_list A list of when the cohorts were first treated
 #' @return t_list A list of the the time periods for the outcome. The vector of outcomes corresponds with this order.
 
-compute_g_level_summaries <- function(df){
+compute_g_level_summaries <- function(df, is_balanced = TRUE){
 
   #Balance the panel (and throw a warning if original panel is unbalanced)
-  df <- balance_df(df)
-
+  if(!is_balanced){
+    df <- balance_df(df)
+  }
   g_list <- sort(unique(df$g))
   t_list <- sort(unique(df$t))
+
+  #Reshape so that Y_{it} is a column for all t
+  df <- df  %>%
+    reshape2::dcast(i + g ~ t, value.var = "y") %>%
+    dplyr::select(-i)
+
   compute_Ybar_Sbar_g <- function(g){
     #Filter to observations in cohort g
-    dfg <- df %>% dplyr::filter(g == !!g)
-
-    #Reshape so that Y_{it} is a column for all t
-    dfg <- dfg  %>%
-      reshape2::dcast(i ~ t, value.var = "y") %>%
-      dplyr::select(-i)
+    dfg <- df %>%
+           dplyr::filter(g == !!g) %>%
+           dplyr::select(-g)
 
     #Order the columns ascending in time
     tVec <- as.numeric(colnames(dfg))
@@ -36,13 +41,14 @@ compute_g_level_summaries <- function(df){
 
     #Compute means Ybar_g and covariance S_g
     Ybar_g <- base::colMeans(dfg)
-    S_g <- stats::var(dfg)
+    S_g <- Rfast::cova(dfg)
 
 
     return(list(Ybar_g = Ybar_g,
                 S_g = S_g,
                 N_g = N_g))
   }
+
 
   resultsList <- purrr::map(.x = g_list,
                             .f = compute_Ybar_Sbar_g)
@@ -63,6 +69,7 @@ compute_g_level_summaries <- function(df){
                 g_list = g_list,
                 t_list = t_list ))
 }
+
 
 
 balance_df <- function(df){
@@ -819,6 +826,61 @@ calculate_full_vcv <- function(eventPlotResultsList, resultsDF){
 
 
 
+processDF <- function(df, i, g, t, y){
+
+  #This function processes the df inputted to staggered (or staggered_cs/sa)
+  # It checks that the columns in the user-inputted values of  i,g,t,y are actually in the data
+  # It also renames these columns to "i", "g", "t", "y"
+
+  # Let's make sure we have columns with name i, t, y and g
+  colnames_df <- colnames(df)
+  if(!i %in% colnames_df){
+    stop(paste0("There is no column ", i, " in the data. Thus, we are not able to find the unit identifier variable."))
+  }
+  if(!t %in% colnames_df){
+    stop(paste0("There is no column ", t, " in the data. Thus, we are not able to find the time identifier variable."))
+  }
+  if(!g %in% colnames_df){
+    stop(paste0("There is no column ", g, " in the data. Thus, we are not able to find the group identifier variable."))
+  }
+  if(!y %in% colnames_df){
+    stop(paste0("There is no column ", y, " in the data. Thus, we are not able to find the outcome variable."))
+  }
+
+  # Sanity checks
+  if(i %in% c("g", "t", "y" )){
+    stop(paste0("Unit identifier cannot be labeled g, t, or y"))
+  }
+
+  if(t %in% c("i","y", "g" )){
+    stop(paste0("Time identifier cannot be labeled i, g, or y"))
+  }
+
+  if(g %in% c("i", "t" ,"y" )){
+    stop(paste0("Group identifier cannot be labeled i, t, or y"))
+  }
+
+
+  # Re-label i, t, g, y
+  if(i != "i"){
+    df[,"i"] <- df[,i]
+  }
+
+  if(t != "t"){
+    df[, "t"] <- df[,t]
+  }
+
+  if(g != "g"){
+    df[, "g"] <-  df[,g]
+  }
+
+  if(y != "y"){
+    df[, "y"] <- df[,y]
+  }
+  return(df)
+}
+
+
 #' @useDynLib staggered
 #' @importFrom magrittr "%>%"
 #' @title Calculate the efficient adjusted estimator in staggered rollout designs
@@ -837,6 +899,8 @@ calculate_full_vcv <- function(eventPlotResultsList, resultsDF){
 #' @param return_full_vcv If this is true and estimand = "eventstudy", then the function returns a list containing the full variance-covariance matrix for the event-plot estimates in addition to the usual dataframe with the estimates
 #' @param return_matrix_list If true, the function returns a list of the A_0_list and A_theta_list matrices along with betastar. This is used for internal recursive calls to calculate the variance-covariance matrix, and will generally not be needed by the end-user. Default is False.
 #' @param use_last_treated_only If true, then A_0_list and A_theta_list are created to only make comparisons with the last treated cohorts (as suggested by Sun and Abraham), rather than using not-yet-treated units as comparisons. If set to TRUE (and use_DiD_A0 = TRUE), then beta=1 corresponds with the Sun and Abraham estimator.
+#' @param compute_fisher If true, computes a Fisher Randomization Test using the studentized estimator.
+#' @param skip_data_check If true, skips checks that the data is balanced and contains the colums i,t,g,y. Used in internal recursive calls to increase speed, but not recommended for end-user.
 #' @return resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = TRUE, it likewise returns a list containing lists of matrices used in the vcv calculation.)
 #' @references
 #' \cite{Roth, Jonatahan, and Sant'Anna, Pedro H. C. (2021),
@@ -898,57 +962,21 @@ staggered <- function(df,
                       return_full_vcv = FALSE,
                       return_matrix_list = FALSE,
                       use_last_treated_only = FALSE,
-					  compute_fisher = FALSE){
+					            compute_fisher = FALSE,
+					            skip_data_check = FALSE){
 
-  # Let's make sure we have columns with name i, t, y and g
-  colnames_df <- colnames(df)
-  if(!i %in% colnames_df){
-    stop(paste0("There is no column ", i, " in the data. Thus, we are not able to find the unit identifier variable."))
-  }
-  if(!t %in% colnames_df){
-    stop(paste0("There is no column ", t, " in the data. Thus, we are not able to find the time identifier variable."))
-  }
-  if(!g %in% colnames_df){
-    stop(paste0("There is no column ", g, " in the data. Thus, we are not able to find the group identifier variable."))
-  }
-  if(!y %in% colnames_df){
-    stop(paste0("There is no column ", y, " in the data. Thus, we are not able to find the outcome variable."))
+  #Process the inputted df by checking the inputted columns and renaming to i,t,g,y, and balancing on (i,t)
+  #We skip this if skip_data_check = TRUE
+  if(!skip_data_check){
+    df <- processDF(df,
+                    i=i,
+                    g=g,
+                    t=t,
+                    y=y)
+    #Balance the panel (and throw a warning if original panel is unbalanced)
+    df <- balance_df(df = df)
   }
 
-  # Sanity checks
-  if(i %in% c("g", "t", "y" )){
-    stop(paste0("Unit identifier cannot be labeled g, t, or y"))
-  }
-
-  if(t %in% c("i","y", "g" )){
-    stop(paste0("Time identifier cannot be labeled i, g, or y"))
-  }
-
-  if(g %in% c("i", "t" ,"y" )){
-    stop(paste0("Group identifier cannot be labeled i, t, or y"))
-  }
-
-
-  # Re-label i, t, g, y
-  if(i != "i"){
-    df[,"i"] <- df[,i]
-  }
-
-  if(t != "t"){
-    df[, "t"] <- df[,t]
-  }
-
-  if(g != "g"){
-    df[, "g"] <-  df[,g]
-  }
-
-  if(y != "y"){
-    df[, "y"] <- df[,y]
-  }
-
-
-  #Balance the panel (and throw a warning if original panel is unbalanced)
-  df <- balance_df(df)
 
   #  If estimand is provided, force to be lower-case (allowing for non-case sensitive inputs)
   if(!is.null(estimand)){
@@ -974,7 +1002,8 @@ staggered <- function(df,
                                  use_DiD_A0 = use_DiD_A0,
                                  return_matrix_list = TRUE,
                                  use_last_treated_only = use_last_treated_only,
-                                 compute_fisher = compute_fisher))
+                                 compute_fisher = compute_fisher,
+                                 skip_data_check = T))
 
     resultsDF <- purrr::reduce(.x = purrr::map(.x = eventPlotResultsList, .f = ~ .x$resultsDF),
                                .f = dplyr::bind_rows)
@@ -997,7 +1026,7 @@ staggered <- function(df,
       return(resultsDF)
     }
   }
-  g_level_summaries <- compute_g_level_summaries(df)
+  g_level_summaries <- compute_g_level_summaries(df, is_balanced = TRUE)
   Ybar_g_list <- g_level_summaries$Ybar_g_List
   S_g_list <- g_level_summaries$S_g_List
   N_g_list <- g_level_summaries$N_g_List
@@ -1163,7 +1192,8 @@ staggered <- function(df,
                                                  eventTime = eventTime,
                                                  return_full_vcv = F,
                                                  return_matrix_list = F,
-                                                 compute_fisher = F) %>%
+                                                 compute_fisher = F,
+                                                 skip_data_check = T) %>%
                             mutate(seed = .x)
                       )
 

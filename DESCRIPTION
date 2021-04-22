@@ -18,7 +18,8 @@ Imports:
     Rcpp,
     magrittr,
     MASS,
-    stats
+    stats,
+    Rfast
 LinkingTo: 
     Rcpp,
     RcppEigen
