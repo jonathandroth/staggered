@@ -848,21 +848,37 @@ calculate_full_vcv <- function(eventPlotResultsList, resultsDF){
 #' library(purrr)
 #' library(MASS)
 #' # load the officer data
-#' df <- pj_officer_level_balanced
-#' # We modify the data so that the time dimension is named t,
-#' # the period of treatment is named g,
-#' # the outcome is named y,
-#' # and the individual identifiers are named i.
-#' df <- df %>% rename(t = period, y = complaints, g = first_trained, i = uid)
+#' df <- data(pj_officer_level_balanced)
 #' # Calculate efficient estimator for the simple weighted average
-#' staggered(df = df, estimand = "simple")
+#' staggered(df = df,
+#'   i = "uid",
+#'   t = "period",
+#'   g = "first_trained",
+#'   y = "complaints",
+#'   estimand = "simple")
 #' # Calculate efficient estimator for the cohort weighted average
-#' staggered(df = df, estimand = "cohort")
+#' staggered(df = df,
+#'   i = "uid",
+#'   t = "period",
+#'   g = "first_trained",
+#'   y = "complaints",
+#'   estimand = "cohort")
 #' # Calculate efficient estimator for the calendar weighted average
-#' staggered(df = df, estimand = "calendar")
+#' staggered(df = df,
+#'   i = "uid",
+#'   t = "period",
+#'   g = "first_trained",
+#'   y = "complaints",
+#'   estimand = "calendar")
 #' # Calculate event-study coefficients for the first 24 months
 #' # (month 0 is instantaneous effect)
-#' eventPlotResults <- staggered(df = df, estimand = "eventstudy", eventTime = 0:23)
+#' eventPlotResults <- staggered(df = df,
+#'   i = "uid",
+#'   t = "period",
+#'   g = "first_trained",
+#'   y = "complaints",
+#'   estimand = "eventstudy",
+#'   eventTime = 0:23)
 #' eventPlotResults %>% head()
 #' }
 #' @export
@@ -897,6 +913,20 @@ staggered <- function(df,
   if(!y %in% colnames_df){
     stop(paste0("There is no column ", y, " in the data. Thus, we are not able to find the outcome variable."))
   }
+
+  # Sanity checks
+  if(i %in% c("g", "t", "y" )){
+    stop(paste0("Unit identifier cannot be labeled g, t, or y"))
+  }
+
+  if(t %in% c("i","y", "g" )){
+    stop(paste0("Time identifier cannot be labeled i, g, or y"))
+  }
+
+  if(g %in% c("i", "t" ,"y" )){
+    stop(paste0("Group identifier cannot be labeled i, t, or y"))
+  }
+
 
   # Re-label i, t, g, y
   if(i != "i"){
@@ -1151,11 +1181,12 @@ staggered <- function(df,
 #' library(purrr)
 #' library(MASS)
 #' # load the officer data
-#' df <- pj_officer_level_balanced
+#' df <- data(pj_officer_level_balanced)
 #' # We modify the data so that the time dimension is named t,
 #' # the period of treatment is named g,
 #' # the outcome is named y,
-#' # and the individual identifiers are named i.
+#' # and the individual identifiers are named i
+#'# (this allow us to use default arguments on \code{staggered_cs}).
 #' df <- df %>% rename(t = period, y = complaints, g = first_trained, i = uid)
 #' # Calculate Callaway and Sant'Anna estimator for the simple weighted average
 #' staggered_cs(df = df, estimand = "simple")
@@ -1193,6 +1224,19 @@ staggered_cs <- function(df,
   }
   if(!y %in% colnames_df){
     stop(paste0("There is no column ", y, " in the data. Thus, we are not able to find the outcome variable."))
+  }
+
+  # Sanity checks
+  if(i %in% c("g", "t", "y" )){
+    stop(paste0("Unit identifier cannot be labeled g, t, or y"))
+  }
+
+  if(t %in% c("i","y", "g" )){
+    stop(paste0("Time identifier cannot be labeled i, g, or y"))
+  }
+
+  if(g %in% c("i", "t" ,"y" )){
+    stop(paste0("Group identifier cannot be labeled i, t, or y"))
   }
 
   # Re-label i, t, g, y
@@ -1264,11 +1308,12 @@ staggered_cs <- function(df,
 #' library(purrr)
 #' library(MASS)
 #' # load the officer data
-#' df <- pj_officer_level_balanced
+#' df <- data(pj_officer_level_balanced)
 #' # We modify the data so that the time dimension is named t,
 #' # the period of treatment is named g,
 #' # the outcome is named y,
-#' # and the individual identifiers are named i.
+#' # and the individual identifiers are named i
+#' #  (this allow us to use default arguments on \code{staggered_cs}).
 #' df <- df %>% rename(t = period, y = complaints, g = first_trained, i = uid)
 #' # Calculate Sun and Abraham estimator for the simple weighted average
 #' staggered_sa(df = df, estimand = "simple")
@@ -1306,6 +1351,19 @@ staggered_sa <- function(df,
   }
   if(!y %in% colnames_df){
     stop(paste0("There is no column ", y, " in the data. Thus, we are not able to find the outcome variable."))
+  }
+
+  # Sanity checks
+  if(i %in% c("g", "t", "y" )){
+    stop(paste0("Unit identifier cannot be labeled g, t, or y"))
+  }
+
+  if(t %in% c("i","y", "g" )){
+    stop(paste0("Time identifier cannot be labeled i, g, or y"))
+  }
+
+  if(g %in% c("i", "t" ,"y" )){
+    stop(paste0("Group identifier cannot be labeled i, t, or y"))
   }
 
   # Re-label i, t, g, y

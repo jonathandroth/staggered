@@ -63,21 +63,37 @@ library(dplyr)
 library(purrr)
 library(MASS)
 # load the officer data
-df <- pj_officer_level_balanced
-# We modify the data so that the time dimension is named t,
-# the period of treatment is named g,
-# the outcome is named y,
-# and the individual identifiers are named i.
-df <- df \%>\% rename(t = period, y = complaints, g = first_trained, i = uid)
+df <- data(pj_officer_level_balanced)
 # Calculate efficient estimator for the simple weighted average
-staggered(df = df, estimand = "simple")
+staggered(df = df,
+  i = "uid",
+  t = "period",
+  g = "first_trained",
+  y = "complaints",
+  estimand = "simple")
 # Calculate efficient estimator for the cohort weighted average
-staggered(df = df, estimand = "cohort")
+staggered(df = df,
+  i = "uid",
+  t = "period",
+  g = "first_trained",
+  y = "complaints",
+  estimand = "cohort")
 # Calculate efficient estimator for the calendar weighted average
-staggered(df = df, estimand = "calendar")
+staggered(df = df,
+  i = "uid",
+  t = "period",
+  g = "first_trained",
+  y = "complaints",
+  estimand = "calendar")
 # Calculate event-study coefficients for the first 24 months
 # (month 0 is instantaneous effect)
-eventPlotResults <- staggered(df = df, estimand = "eventstudy", eventTime = 0:23)
+eventPlotResults <- staggered(df = df,
+  i = "uid",
+  t = "period",
+  g = "first_trained",
+  y = "complaints",
+  estimand = "eventstudy",
+  eventTime = 0:23)
 eventPlotResults \%>\% head()
 }
 }

@@ -54,11 +54,12 @@ library(dplyr)
 library(purrr)
 library(MASS)
 # load the officer data
-df <- pj_officer_level_balanced
+df <- data(pj_officer_level_balanced)
 # We modify the data so that the time dimension is named t,
 # the period of treatment is named g,
 # the outcome is named y,
-# and the individual identifiers are named i.
+# and the individual identifiers are named i
+# (this allow us to use default arguments on \code{staggered_cs}).
 df <- df \%>\% rename(t = period, y = complaints, g = first_trained, i = uid)
 # Calculate Callaway and Sant'Anna estimator for the simple weighted average
 staggered_cs(df = df, estimand = "simple")
