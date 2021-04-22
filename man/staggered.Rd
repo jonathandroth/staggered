@@ -63,7 +63,7 @@ library(dplyr)
 library(purrr)
 library(MASS)
 # load the officer data
-df <- data(pj_officer_level_balanced)
+df <- pj_officer_level_balanced
 # Calculate efficient estimator for the simple weighted average
 staggered(df = df,
   i = "uid",

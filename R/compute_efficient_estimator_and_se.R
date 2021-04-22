@@ -930,19 +930,19 @@ staggered <- function(df,
 
   # Re-label i, t, g, y
   if(i != "i"){
-    df$i <- df[,i]
+    df[,"i"] <- df[,i]
   }
 
   if(t != "t"){
-    df$t <- df[,t]
+    df[, "t"] <- df[,t]
   }
 
   if(g != "g"){
-    df$g <- df[,g]
+    df[, "g"] <-  df[,g]
   }
 
   if(y != "y"){
-    df$y <- df[,y]
+    df[, "y"] <- df[,y]
   }
 
   #Balance the panel (and throw a warning if original panel is unbalanced)
@@ -1241,19 +1241,19 @@ staggered_cs <- function(df,
 
   # Re-label i, t, g, y
   if(i != "i"){
-    df$i <- df[,i]
+    df[,"i"] <- df[,i]
   }
 
   if(t != "t"){
-    df$t <- df[,t]
+    df[, "t"] <- df[,t]
   }
 
   if(g != "g"){
-    df$g <- df[,g]
+    df[, "g"] <-  df[,g]
   }
 
   if(y != "y"){
-    df$y <- df[,y]
+    df[, "y"] <- df[,y]
   }
   #Balance the panel (and throw a warning if original panel is unbalanced)
   df <- balance_df(df)
@@ -1368,19 +1368,19 @@ staggered_sa <- function(df,
 
   # Re-label i, t, g, y
   if(i != "i"){
-    df$i <- df[,i]
+    df[,"i"] <- df[,i]
   }
 
   if(t != "t"){
-    df$t <- df[,t]
+    df[, "t"] <- df[,t]
   }
 
   if(g != "g"){
-    df$g <- df[,g]
+    df[, "g"] <-  df[,g]
   }
 
   if(y != "y"){
-    df$y <- df[,y]
+    df[, "y"] <- df[,y]
   }
   #Balance the panel (and throw a warning if original panel is unbalanced)
   df <- balance_df(df)

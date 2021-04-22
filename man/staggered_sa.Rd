@@ -54,7 +54,7 @@ library(dplyr)
 library(purrr)
 library(MASS)
 # load the officer data
-df <- data(pj_officer_level_balanced)
+df <- pj_officer_level_balanced
 # We modify the data so that the time dimension is named t,
 # the period of treatment is named g,
 # the outcome is named y,
