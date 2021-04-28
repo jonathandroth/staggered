@@ -5,3 +5,7 @@ eigenMapMatMult <- function(A, B) {
     .Call('_staggered_eigenMapMatMult', PACKAGE = 'staggered', A, B)
 }
 
+solve_least_squares_svd <- function(A, B) {
+    .Call('_staggered_solve_least_squares_svd', PACKAGE = 'staggered', A, B)
+}
+

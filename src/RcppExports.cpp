@@ -18,9 +18,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// solve_least_squares_svd
+Eigen::MatrixXd solve_least_squares_svd(Eigen::MatrixXd A, Eigen::MatrixXd B);
+RcppExport SEXP _staggered_solve_least_squares_svd(SEXP ASEXP, SEXP BSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Eigen::MatrixXd >::type A(ASEXP);
+    Rcpp::traits::input_parameter< Eigen::MatrixXd >::type B(BSEXP);
+    rcpp_result_gen = Rcpp::wrap(solve_least_squares_svd(A, B));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_staggered_eigenMapMatMult", (DL_FUNC) &_staggered_eigenMapMatMult, 2},
+    {"_staggered_solve_least_squares_svd", (DL_FUNC) &_staggered_solve_least_squares_svd, 2},
     {NULL, NULL, 0}
 };
 

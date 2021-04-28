@@ -184,7 +184,8 @@ compute_Betastar <- function(Ybar_g_list,
   X_theta_cov <- base::Reduce(x = X_theta_cov_list, f = '+')
 
   #betastar <- solve(Xvar) %*% X_theta_cov
-  betastar <- MASS::ginv(Xvar) %*% X_theta_cov
+  #betastar <- MASS::ginv(Xvar) %*% X_theta_cov
+  betastar <- solve_least_squares_svd(Xvar,X_theta_cov)
   return(betastar)
 }
 
