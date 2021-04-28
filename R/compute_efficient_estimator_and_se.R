@@ -42,7 +42,7 @@ compute_g_level_summaries <- function(df, is_balanced = TRUE){
 
     #Compute means Ybar_g and covariance S_g
     Ybar_g <- base::colMeans(dfg)
-    S_g <- Rfast::cova(dfg)
+    S_g <- coop::covar(dfg)
 
 
     return(list(Ybar_g = Ybar_g,
