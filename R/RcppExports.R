@@ -9,3 +9,7 @@ solve_least_squares_svd <- function(A, B) {
     .Call('_staggered_solve_least_squares_svd', PACKAGE = 'staggered', A, B)
 }
 
+solve_least_squares_normal <- function(A, B) {
+    .Call('_staggered_solve_least_squares_normal', PACKAGE = 'staggered', A, B)
+}
+
