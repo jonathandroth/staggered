@@ -1178,7 +1178,8 @@ staggered <- function(df,
     i_g_table$g <- i_g_table$g[randIndex]
 
     #Merge the new treatment assignments back with the original
-    df <- dplyr::left_join(df %>% dplyr::select(-g),
+    df$g <- NULL
+    df <- dplyr::left_join(df,
                            i_g_table,
                            by = c("i"))
 
@@ -1188,10 +1189,13 @@ staggered <- function(df,
   if(compute_fisher){
 
     #Find unique pairs of (i,g). This will be used for computing the permutations
-    i_g_table <- df %>%
-                 dplyr::filter(t == min(t)) %>%
-                 dplyr::select(i,g)
+    # i_g_table <- df %>%
+    #              dplyr::filter(t == min(t)) %>%
+    #              dplyr::select(i,g)
 
+    i_g_table <- df %>%
+      dplyr::filter(t == min(t))
+    i_g_table <- i_g_table[,c("i","g")]
 
     FRTResults <-
       purrr::map_dfr(.x = 1:num_fisher_permutations,
