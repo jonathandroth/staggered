@@ -1115,6 +1115,9 @@ staggered <- function(df,
   )
   #  Xvar_list <- purrr::pmap(.l = list(A_0_list, S_g_list, N_g_list) , .f = function(A0,S,N){ return(1/N * A0 %*%S %*% base::t(A0) )  } )
 
+  #Save the user-inputted beta (used in FRT call)
+  user_input_beta <- beta
+
   if(is.null(beta)){
     beta <- compute_Betastar(Ybar_g_list,
                              A_theta_list,
@@ -1200,7 +1203,8 @@ staggered <- function(df,
     FRTResults <-
       purrr::map_dfr(.x = 1:num_fisher_permutations,
                      .f = ~ staggered::staggered(df = permuteTreatment(df, i_g_table, seed = .x),
-                                                 estimand = "estimand",
+                                                 estimand = NULL,
+                                                 beta = user_input_beta,
                                                  A_theta_list = A_theta_list,
                                                  A_0_list = A_0_list,
                                                  eventTime = eventTime,
