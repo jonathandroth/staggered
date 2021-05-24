@@ -1200,23 +1200,34 @@ staggered <- function(df,
       dplyr::filter(t == min(t))
     i_g_table <- i_g_table[,c("i","g")]
 
+    #Now, we compute the FRT for each seed, permuting treatment for each one
+      #We catch any errors in the FRT simulations, and throw a warning if at least one has an error (using the remaining draws to calculate frt)
     FRTResults <-
-      purrr::map_dfr(.x = 1:num_fisher_permutations,
-                     .f = ~ staggered::staggered(df = permuteTreatment(df, i_g_table, seed = .x),
-                                                 estimand = NULL,
-                                                 beta = user_input_beta,
-                                                 A_theta_list = A_theta_list,
-                                                 A_0_list = A_0_list,
-                                                 eventTime = eventTime,
-                                                 return_full_vcv = F,
-                                                 return_matrix_list = F,
-                                                 compute_fisher = F,
-                                                 skip_data_check = T) %>%
-                            mutate(seed = .x)
-                      )
+      purrr::map(.x = 1:num_fisher_permutations,
+                 .f = purrr::possibly(
+                   .f =~ staggered::staggered(df = permuteTreatment(df, i_g_table, seed = .x),
+                                              estimand = NULL,
+                                              beta = user_input_beta,
+                                              A_theta_list = A_theta_list,
+                                              A_0_list = A_0_list,
+                                              eventTime = eventTime,
+                                              return_full_vcv = F,
+                                              return_matrix_list = F,
+                                              compute_fisher = F,
+                                              skip_data_check = T) %>% mutate(seed = .x),
+                   otherwise = NULL)
+      ) %>%
+      purrr::discard(base::is.null) %>%
+      purrr::reduce(.f = dplyr::bind_rows)
+
+    successful_frt_draws <- NROW(FRTResults)
+    if(successful_frt_draws < num_fisher_permutations){
+      warning("There was an error in at least one of the FRT simulations. Removing the problematic draws.")
+    }
 
     resultsDF$fisher_pval <- mean( abs(resultsDF$estimate/resultsDF$se) < abs(FRTResults$estimate/FRTResults$se) )
     resultsDF$fisher_pval_se_neyman <- mean( abs(resultsDF$estimate/resultsDF$se_neyman) < abs(FRTResults$estimate/FRTResults$se_neyman) )
+    resultsDF$num_fisher_permutations <- successful_frt_draws
 
   }
   if(!return_matrix_list){
