@@ -83,7 +83,7 @@ balance_df <- function(df){
   it_counts <-
     df %>%
       dplyr::group_by(i,t) %>%
-      dplyr::summarise(n = n())
+      dplyr::summarise(n = dplyr::n())
 
   if(max(it_counts$n) > 1 ){
     stop("There are multiple observations with the same (i,t) values. The panel should have a unique outcome for each (i,t) value.")
@@ -433,7 +433,7 @@ create_A0_list <- function(g_list,
 
 sum_of_lists <- function(.l){
   #Given a list of lists all of the same length, this returns a list where the jth entry is the sum of the jth entry of all the lists
-  if(length(.l) == 1){return(.l)}
+  if(length(.l) == 1){return(.l[[1]])}
   results <- purrr::reduce(.x = .l,
                            .f = function(l1,
                                          l2){
