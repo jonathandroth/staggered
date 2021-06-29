@@ -18,9 +18,11 @@ Imports:
     Rcpp,
     magrittr,
     MASS,
-    stats
+    stats,
+    tidyr,
+    coop
 LinkingTo: 
     Rcpp,
     RcppEigen
 Depends: 
-    R (>= 3.50)
+    R (>= 3.5.0)

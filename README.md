@@ -4,6 +4,7 @@
 # staggered
 
 <!-- badges: start -->
+
 <!-- badges: end -->
 
 The staggered R package computes the efficient estimator for settings
@@ -45,7 +46,7 @@ for modifying and plotting the results.
 ``` r
 library(staggered) #load the staggered package
 library(dplyr) #load dplyr for data manipulation
-#> Warning: package 'dplyr' was built under R version 4.0.2
+#> Warning: package 'dplyr' was built under R version 4.0.5
 #> 
 #> Attaching package: 'dplyr'
 #> The following objects are masked from 'package:stats':
@@ -55,7 +56,7 @@ library(dplyr) #load dplyr for data manipulation
 #> 
 #>     intersect, setdiff, setequal, union
 library(ggplot2) #load ggplot2 for plotting the results
-#> Warning: package 'ggplot2' was built under R version 4.0.2
+#> Warning: package 'ggplot2' was built under R version 4.0.5
 library(purrr)
 
 df <- staggered::pj_officer_level_balanced #load the officer data
@@ -204,9 +205,15 @@ the github and RCall packages. This can be done with the following
 commands
 
     > net install github, from("https://haghish.github.io/github/")
-    > github install haghish/rcall, stable
+    > github install haghish/rcall, version("2.5.0")
 
-Note that the user must have R installed before installing the rcall
+**Important note:** the staggered\_stata package was built under Rcall
+version 2.5.0, and the recent release of RCall version 3.0 has created
+some compatibility issues. We will try our best to fix these issues, but
+in the meantime it is best to install version 2.5.0, as in the command
+above.
+
+Note that the user must have R installed before installing the RCall
 package. The latest version of R can be downloaded
 [here](https://cloud.r-project.org/). The staggered\_stata package can
 then be installed with
