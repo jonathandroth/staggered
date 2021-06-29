@@ -13,6 +13,19 @@ compute_Betastar(
   Xvar_list = NULL
 )
 }
+\arguments{
+\item{Ybar_g_list}{Ybar_g_list}
+
+\item{A_theta_list}{A_theta_list}
+
+\item{A_0_list}{A_0_list}
+
+\item{S_g_list}{S_g_list}
+
+\item{N_g_list}{N_g_list}
+
+\item{Xvar_list}{Xvar_list}
+}
 \description{
 \code{compute_Betastar} computes the plug-in efficient betahat
 }

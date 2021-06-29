@@ -4,10 +4,12 @@
 \alias{compute_g_level_summaries}
 \title{Calculate group level summary statistics}
 \usage{
-compute_g_level_summaries(df)
+compute_g_level_summaries(df, is_balanced = TRUE)
 }
 \arguments{
 \item{df}{A data frame containing panel data with the variables y (an outcome), i (an individual identifier), t (the period in which the outcome is observe), g (the period in which i is first treated, with Inf denoting never treated)}
+
+\item{is_balanced}{If true, the df has previously been balanced so this does not need to be done internally.}
 }
 \value{
 Y_bar_list A list of the means of the outcomes for each cohort g

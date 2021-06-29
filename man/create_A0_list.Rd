@@ -6,6 +6,11 @@
 \usage{
 create_A0_list(g_list, t_list)
 }
+\arguments{
+\item{g_list}{g_list}
+
+\item{t_list}{t_list}
+}
 \description{
 \code{create_A0_list} creates the list of A_0 matrices for Xhat corresponding with all possible
 comparisons of cohorts before they are treated
