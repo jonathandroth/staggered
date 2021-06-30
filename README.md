@@ -69,7 +69,7 @@ calculate the efficient estimator. With staggered treatment timing,
 there are several ways to aggregate treatment effects across cohorts and
 time periods. The following block of code calculates the simple,
 calendar-weighted, and cohort-weighted average treatment effects (see
-Section 3.2 of [Roth and Sant’Anna
+Section 2.3 of [Roth and Sant’Anna
 (2021)](https://arxiv.org/pdf/2102.01291.pdf) for more about different
 aggregation schemes).
 
@@ -150,15 +150,15 @@ eventPlotResults %>%
 
 ### Permutation tests
 
-The staggered package also allows you to calculate permutation tests,
-also known as Fisher Randomization Tests. These tests are based on a
-studentized statistic, and thus are finite-sample exact for the null of
-no treatment effects *and* asymptotically correct for the null of no
-average treatment effects.
+The staggered package also allows you to calculate p-values using
+permutation tests, also known as Fisher Randomization Tests. These tests
+are based on a studentized statistic, and thus are finite-sample exact
+for the null of no treatment effects *and* asymptotically correct for
+the null of no average treatment effects.
 
 ``` r
 #Calculate efficient estimator for the simple weighted average
-#Use permutation test with 500 permutation draws
+#Use Fisher permutation test with 500 permutation draws
 staggered(df = df, 
           i = "uid",
           t = "period",
