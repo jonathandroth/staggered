@@ -106,6 +106,23 @@ eventPlotResults %>%
   ggtitle("Effect of Procedural Justice Training on Officer Complaints")
 ```
 
+### Permutation tests
+
+The staggered package also allows you to calculate permutation tests, also known as Fisher Randomization Tests. These tests are based on a studentized statistic, and thus are finite-sample exact for the null of no treatment effects *and* asymptotically correct for the null of no average treatment effects.
+```{r}
+#Calculate efficient estimator for the simple weighted average
+#Use permutation test with 500 permutation draws
+staggered(df = df, 
+          i = "uid",
+          t = "period",
+          g = "first_trained",
+          y = "complaints", 
+          estimand = "simple",
+          compute_fisher = T, 
+          num_fisher_permutations = 500)
+
+```
+
 ### Other Estimators
 
 Our package also allows for the calculation of several other estimators proposed in the literature. For convenience we provide special functions for implementing the estimators proposed by Callaway & Sant'Anna and Sun & Abraham. The syntax is nearly identical to that for the efficient estimator:

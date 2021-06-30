@@ -148,6 +148,31 @@ eventPlotResults %>%
 
 <img src="man/figures/README-unnamed-chunk-7-1.png" width="100%" />
 
+### Permutation tests
+
+The staggered package also allows you to calculate permutation tests,
+also known as Fisher Randomization Tests. These tests are based on a
+studentized statistic, and thus are finite-sample exact for the null of
+no treatment effects *and* asymptotically correct for the null of no
+average treatment effects.
+
+``` r
+#Calculate efficient estimator for the simple weighted average
+#Use permutation test with 500 permutation draws
+staggered(df = df, 
+          i = "uid",
+          t = "period",
+          g = "first_trained",
+          y = "complaints", 
+          estimand = "simple",
+          compute_fisher = T, 
+          num_fisher_permutations = 500)
+#>       estimate          se   se_neyman fisher_pval fisher_pval_se_neyman
+#> 1 -0.001126981 0.002115194 0.002119248        0.63                 0.632
+#>   num_fisher_permutations
+#> 1                     500
+```
+
 ### Other Estimators
 
 Our package also allows for the calculation of several other estimators
