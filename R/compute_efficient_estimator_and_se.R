@@ -43,6 +43,8 @@ compute_g_level_summaries <- function(df, is_balanced = TRUE){
     #Compute means Ybar_g and covariance S_g
     Ybar_g <- base::colMeans(dfg)
     S_g <- coop::covar(dfg)
+    # If covar is NA or NaN, replace it to 0
+    S_g[is.na(S_g)] <- 0
 
 
     return(list(Ybar_g = Ybar_g,
