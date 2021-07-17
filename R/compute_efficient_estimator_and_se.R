@@ -44,7 +44,7 @@ compute_g_level_summaries <- function(df, is_balanced = TRUE){
     Ybar_g <- base::colMeans(dfg)
     S_g <- coop::covar(dfg)
     # If covar is NA or NaN, replace it to 0
-    S_g[is.na(S_g)] <- 0
+    #S_g[is.na(S_g)] <- 0
 
 
     return(list(Ybar_g = Ybar_g,
@@ -978,6 +978,24 @@ staggered <- function(df,
                     y=y)
     #Balance the panel (and throw a warning if original panel is unbalanced)
     df <- balance_df(df = df)
+  }
+
+
+  #  Compute number of units per cohort
+  cohort_size <- base::table(df$g)/base::length(base::table(df$t))
+  # Flag for singleton cohorts
+  flag_singleton <- as.numeric(names(cohort_size[(cohort_size==1)]))
+  # Drop cohorts which are singleton
+  l_flag1 <- base::length(flag_singleton)
+  if(base::length(l_flag1)>0){
+    gpaste <-  paste(flag_singleton, collapse=", ")
+    if(l_flag1==1){
+      base::warning(paste0("The treatment cohort g = ", gpaste, " has a single cross-sectional unit. We drop this cohort."))
+    } else {
+      base::warning(paste0("The treatment cohorts g = ", gpaste, " have a single cross-sectional unit only. We drop these cohorts."))
+    }
+
+   df <- df[(df$g %in% flag_singleton) == FALSE,]
   }
 
 
