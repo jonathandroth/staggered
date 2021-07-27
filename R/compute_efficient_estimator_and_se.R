@@ -987,7 +987,7 @@ staggered <- function(df,
   flag_singleton <- as.numeric(names(cohort_size[(cohort_size==1)]))
   # Drop cohorts which are singleton
   l_flag1 <- base::length(flag_singleton)
-  if(base::length(l_flag1)>0){
+  if(l_flag1 > 0){
     gpaste <-  paste(flag_singleton, collapse=", ")
     if(l_flag1==1){
       base::warning(paste0("The treatment cohort g = ", gpaste, " has a single cross-sectional unit. We drop this cohort."))
