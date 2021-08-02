@@ -11,6 +11,9 @@
 
 compute_g_level_summaries <- function(df, is_balanced = TRUE){
 
+  # Avoid NOTES in CRAN
+  i <- NULL
+
   #Balance the panel (and throw a warning if original panel is unbalanced)
   if(!is_balanced){
     df <- balance_df(df)
@@ -85,7 +88,11 @@ balance_df <- function(df){
 
   #It then removes observations i for which data is not available for all t
 
-
+  # Avoid NOTES in CRAN
+  i <- NULL
+  y <- NULL
+  numPeriods_i <- NULL
+  t <- NULL
 
 
   numPeriods <- length(unique(df$t))
@@ -513,6 +520,10 @@ create_Atheta_list_for_ATE_tg <- function(t,
                                           N_g_list,
                                           use_last_treated_only = FALSE,
                                           showWarnings = TRUE){
+
+  # AVOID NOTE ON CRAN
+  g <- NULL
+
   numPeriods <- length(t_list)
   if(t < g & showWarnings){warning("t is less than g. ATE(t,g) is zero by assumption")}
   if(t >= max(g_list)){stop("t is greater than max(g)-1; ATE(t,g) is not identified.")}
@@ -757,6 +768,9 @@ create_Atheta_list_for_simple_average_ATE <- function(g_list,
                                                       t_list,
                                                       N_g_list,
                                                       use_last_treated_only = FALSE){
+
+  # Avoif Notes on CRAN
+  g <- NULL
 
   #Create a df with all the (g,t) pairs for which ATE is identified
   gt_df <- purrr::cross_df( list(g = g_list, t = t_list) )

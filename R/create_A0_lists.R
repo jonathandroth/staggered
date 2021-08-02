@@ -243,6 +243,9 @@ create_A0_list_for_simple_average_ATE <- function(g_list,
                                                   N_g_list,
                                                   use_last_treated_only = FALSE){
 
+  # AVOID NOTE ON CRAN
+  g <- NULL
+
   #Create a df with all the (g,t) pairs for which ATE is identified
   gt_df <- purrr::cross_df( list(g = g_list,
                                  t = t_list) )
