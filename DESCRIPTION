@@ -3,7 +3,7 @@ Title: Efficient Estimation Under Staggered Treatment Timing
 Version: 1.01
 Authors@R: 
     c(person("Jonathan", "Roth", email = "Jonathan.Roth@microsoft.com", role = c("aut")),
-    person("Pedro H.C.", "Sant'Anna", email = "pedro.h.santanna@vanderbilt.edu", role = c("aut","cre")))
+    person("Pedro H.C.", "Sant'Anna", email = "pedrohcgs@gmail.com", role = c("aut","cre")))
 Description: Efficiently estimates treatement effects in settings with randomized staggered rollouts, using tools 
     proposed by Roth and Sant'Anna (2021) <arXiv:2102.01291>.
 License: GPL-2
