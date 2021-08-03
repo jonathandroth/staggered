@@ -4,7 +4,6 @@
 # staggered
 
 <!-- badges: start -->
-
 <!-- badges: end -->
 
 The staggered R package computes the efficient estimator for settings
@@ -15,7 +14,7 @@ different dates, the efficient estimator can potentially offer
 substantial gains over methods that only impose parallel trends. The
 package also allows for calculating the generalized
 difference-in-differences estimators of [Callaway and Sant’Anna
-(2020)](https://www.sciencedirect.com/science/article/pii/S0304407620303948?dgcid=author)
+(2020)](https://www.sciencedirect.com/science/article/pii/S0304407620303948)
 and [Sun and Abraham
 (2020)](https://www.sciencedirect.com/science/article/abs/pii/S030440762030378X)
 and the simple-difference-in-means as special cases. We also provide a
@@ -46,7 +45,6 @@ for modifying and plotting the results.
 ``` r
 library(staggered) #load the staggered package
 library(dplyr) #load dplyr for data manipulation
-#> Warning: package 'dplyr' was built under R version 4.0.5
 #> 
 #> Attaching package: 'dplyr'
 #> The following objects are masked from 'package:stats':
@@ -56,7 +54,6 @@ library(dplyr) #load dplyr for data manipulation
 #> 
 #>     intersect, setdiff, setequal, union
 library(ggplot2) #load ggplot2 for plotting the results
-#> Warning: package 'ggplot2' was built under R version 4.0.5
 library(purrr)
 
 df <- staggered::pj_officer_level_balanced #load the officer data
@@ -240,7 +237,7 @@ above.
 
 Note that the user must have R installed before installing the RCall
 package. The latest version of R can be downloaded
-[here](https://cloud.r-project.org/). The staggered\_stata package can
+[here](https://CRAN.R-project.org/). The staggered\_stata package can
 then be installed with
 
     > github install jonathandroth/staggered_stata
