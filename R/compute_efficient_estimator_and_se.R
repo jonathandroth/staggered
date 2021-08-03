@@ -95,6 +95,7 @@ balance_df <- function(df){
   t <- NULL
 
 
+
   numPeriods <- length(unique(df$t))
 
 
@@ -521,8 +522,6 @@ create_Atheta_list_for_ATE_tg <- function(t,
                                           use_last_treated_only = FALSE,
                                           showWarnings = TRUE){
 
-  # AVOID NOTE ON CRAN
-  g <- NULL
 
   numPeriods <- length(t_list)
   if(t < g & showWarnings){warning("t is less than g. ATE(t,g) is zero by assumption")}
@@ -920,7 +919,7 @@ processDF <- function(df, i, g, t, y){
 #' @return resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = TRUE, it likewise returns a list containing lists of matrices used in the vcv calculation.)
 #' @references
 #' \cite{Roth, Jonatahan, and Sant'Anna, Pedro H. C. (2021),
-#'   'Efficient Estimation for Staggered Rollout Designs', <arXiv:2102.01291>.}
+#'   'Efficient Estimation for Staggered Rollout Designs', arXiv: 2102.01291, \url{https://arxiv.org/abs/2102.01291}.}
 #' @examples
 #' \dontrun{
 #' # Load some libraries

@@ -35,7 +35,7 @@ remained in the police force throughout the study period (from January 2011 to D
 }
 \references{
 \cite{Roth, Jonatahan, and Sant'Anna, Pedro H. C. (2021),
-'Efficient Estimation for Staggered Rollout Designs', \url{arXiv:2102.01291}.}
+'Efficient Estimation for Staggered Rollout Designs', arXiv: 2102.01291, \url{https://arxiv.org/abs/2102.01291}.}
 
 \cite{Wood, George, Tyler, Tom R., Papachristos, Andrew P., Roth, Jonathan and Sant'Anna, Pedro H. C. (2020),
 'Revised findings for "Procedural justice training reduces police use of force and complaints against officers",

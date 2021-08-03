@@ -108,5 +108,5 @@ eventPlotResults \%>\% head()
 }
 \references{
 \cite{Roth, Jonatahan, and Sant'Anna, Pedro H. C. (2021),
-'Efficient Estimation for Staggered Rollout Designs', \url{arXiv:2102.01291}.}
+'Efficient Estimation for Staggered Rollout Designs', arXiv: 2102.01291, \url{https://arxiv.org/abs/2102.01291}.}
 }

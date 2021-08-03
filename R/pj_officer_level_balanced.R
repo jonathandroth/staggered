@@ -23,7 +23,7 @@
 #' @source Wood, Tyler, Papachristos, Roth and Sant'Anna (2020) and Roth and Sant'Anna (2021).
 #' @references
 #'   \cite{Roth, Jonatahan, and Sant'Anna, Pedro H. C. (2021),
-#'   'Efficient Estimation for Staggered Rollout Designs', <arXiv:2102.01291>.}
+#'   'Efficient Estimation for Staggered Rollout Designs', arXiv: 2102.01291, \url{https://arxiv.org/abs/2102.01291}.}
 #'
 #'
 #'   \cite{Wood, George, Tyler, Tom R., Papachristos, Andrew P., Roth, Jonathan and Sant'Anna, Pedro H. C. (2020),

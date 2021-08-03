@@ -167,7 +167,7 @@ To install the staggered_stata package, the user first needs to install the gith
 
 **Important note:** the staggered_stata package was built under Rcall version 2.5.0, and the recent release of RCall version 3.0 has created some compatibility issues. We will try our best to fix these issues, but in the meantime it is best to install version 2.5.0, as in the command above.
 
-Note that the user must have R installed before installing the RCall package. The latest version of R can be downloaded [here](https://cloud.r-project.org/). The staggered_stata package can then be installed with
+Note that the user must have R installed before installing the RCall package. The latest version of R can be downloaded [here](https://CRAN.R-project.org/). The staggered_stata package can then be installed with
   
     > github install jonathandroth/staggered_stata
   
