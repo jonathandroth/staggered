@@ -26,6 +26,9 @@ compute_Betastar(
 
 \item{Xvar_list}{Xvar_list}
 }
+\value{
+betastar Vector of plug-in efficient betahat estimates.
+}
 \description{
 \code{compute_Betastar} computes the plug-in efficient betahat
 }

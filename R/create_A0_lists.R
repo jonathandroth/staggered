@@ -7,7 +7,7 @@ create_A0_list_for_ATE_tg <- function(t,
                                       N_g_list,
                                       use_last_treated_only = FALSE){
   numPeriods <- length(t_list)
-  if(t < g){warning("t is less than g. ATE(t,g) is zero by assumption")}
+  #if(t < g){warning("t is less than g. ATE(t,g) is zero by assumption")}
   if(t >= max(g_list)){
     stop("t is greater than max(g)-1; ATE(t,g) is not identified.")
   }

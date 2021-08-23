@@ -11,6 +11,9 @@ create_A0_list(g_list, t_list)
 
 \item{t_list}{t_list}
 }
+\value{
+A0_list list of A_0 matrices for Xhat corresponding with all possible comparisons of cohorts before they are treated
+}
 \description{
 \code{create_A0_list} creates the list of A_0 matrices for Xhat corresponding with all possible
 comparisons of cohorts before they are treated

@@ -11,6 +11,9 @@ compute_Xhat(Ybar_g_list, A_0_list)
 
 \item{A_0_list}{A_0_list}
 }
+\value{
+Xhat the vector Xhat of pre-treatment differences to be used as regressors
+}
 \description{
 \code{compute_Xhat} computes the vector Xhat of pre-treatment differences given the list of cohort means
 Ybar_g_list and the list of matrices A_0_list

@@ -66,7 +66,7 @@ resultsDF A data.frame containing: estimate (the point estimate), se (the standa
 This functions calculates the efficient estimator for staggered rollout designs proposed by Roth and Sant'Anna.
 }
 \examples{
-\dontrun{
+\donttest{
 # Load some libraries
 library(dplyr)
 library(purrr)

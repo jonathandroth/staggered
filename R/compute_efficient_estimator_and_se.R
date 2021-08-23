@@ -140,7 +140,7 @@ compute_Thetahat0 <- function(Ybar_g_list,
 #' Ybar_g_list and the list of matrices A_0_list
 #' @param Ybar_g_list Ybar_g_list
 #' @param A_0_list A_0_list
-
+#' @return Xhat the vector Xhat of pre-treatment differences to be used as regressors
 compute_Xhat <- function(Ybar_g_list, A_0_list){
   A_0_Ybar_list <- purrr::map2(.x = Ybar_g_list,
                                .y = A_0_list,
@@ -159,7 +159,9 @@ compute_Xhat <- function(Ybar_g_list, A_0_list){
 #' @param S_g_list S_g_list
 #' @param N_g_list N_g_list
 #' @param Xvar_list Xvar_list
-#'
+#' @return betastar Vector of plug-in efficient betahat estimates.
+
+
 compute_Betastar <- function(Ybar_g_list,
                              A_theta_list,
                              A_0_list,
@@ -410,6 +412,7 @@ compute_se_Thetahat_beta <- function(beta,
 #' comparisons of cohorts before they are treated
 #' @param g_list g_list
 #' @param t_list t_list
+#' @return A0_list list of A_0 matrices for Xhat corresponding with all possible comparisons of cohorts before they are treated
 
 create_A0_list <- function(g_list,
                            t_list){
@@ -524,7 +527,7 @@ create_Atheta_list_for_ATE_tg <- function(t,
 
 
   numPeriods <- length(t_list)
-  if(t < g & showWarnings){warning("t is less than g. ATE(t,g) is zero by assumption")}
+  #if(t < g & showWarnings){warning("t is less than g. ATE(t,g) is zero by assumption")}
   if(t >= max(g_list)){stop("t is greater than max(g)-1; ATE(t,g) is not identified.")}
   #Create A_thetas for ATT_{t,g}
   treated_cohort_index <- which(g_list == g)
@@ -921,7 +924,7 @@ processDF <- function(df, i, g, t, y){
 #' \cite{Roth, Jonatahan, and Sant'Anna, Pedro H. C. (2021),
 #'   'Efficient Estimation for Staggered Rollout Designs', arXiv: 2102.01291, \url{https://arxiv.org/abs/2102.01291}.}
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Load some libraries
 #' library(dplyr)
 #' library(purrr)
@@ -1314,7 +1317,7 @@ staggered <- function(df,
 #'   'Difference-in-Differences with Multiple Time Periods', Forthcoming at the Journal of Econometrics,
 #'   \doi{10.1016/j.jeconom.2020.12.001}.}
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Load some libraries
 #' library(dplyr)
 #' library(purrr)
@@ -1415,7 +1418,7 @@ staggered_cs <- function(df,
 #'   'Estimating dynamic treatment effects in event studies with heterogeneous treatment effects', Forthcoming at the Journal of Econometrics,
 #'   \doi{10.1016/j.jeconom.2020.09.006}.}
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Load some libraries
 #' library(dplyr)
 #' library(purrr)

@@ -57,7 +57,7 @@ resultsDF A data.frame containing: estimate (the point estimate), se (the standa
 This functions calculates the Callaway & Sant'Anna (2020) estimator for staggered rollout designs using not-yet-treated units (including never-treated, if available) as controls.
 }
 \examples{
-\dontrun{
+\donttest{
 # Load some libraries
 library(dplyr)
 library(purrr)

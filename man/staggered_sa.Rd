@@ -57,7 +57,7 @@ resultsDF A data.frame containing: estimate (the point estimate), se (the standa
 This functions calculates the Sun & Abraham (2020) estimator for staggered rollout designs using last-treated-treated units (never-treated, if availabe) as controls.
 }
 \examples{
-\dontrun{
+\donttest{
 # Load some libraries
 library(dplyr)
 library(purrr)
