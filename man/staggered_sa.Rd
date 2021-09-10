@@ -57,13 +57,15 @@ resultsDF A data.frame containing: estimate (the point estimate), se (the standa
 This functions calculates the Sun & Abraham (2020) estimator for staggered rollout designs using last-treated-treated units (never-treated, if availabe) as controls.
 }
 \examples{
-\donttest{
 # Load some libraries
 library(dplyr)
 library(purrr)
 library(MASS)
-# load the officer data
+set.seed(1234)
+# load the officer data and subset it
 df <- pj_officer_level_balanced
+group_random <- sample(unique(df$assigned), 10)
+df <- df[df$assigned \%in\% group_random,]
 # We modify the data so that the time dimension is named t,
 # the period of treatment is named g,
 # the outcome is named y,
@@ -80,7 +82,7 @@ staggered_sa(df = df, estimand = "calendar")
 # (month 0 is instantaneous effect)
 eventPlotResults <- staggered_sa(df = df, estimand = "eventstudy", eventTime = 0:23)
 eventPlotResults \%>\% head()
-}
+
 }
 \references{
 \cite{Sun, Liyang, and Abraham, Sarah (2020),

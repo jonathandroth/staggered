@@ -66,13 +66,16 @@ resultsDF A data.frame containing: estimate (the point estimate), se (the standa
 This functions calculates the efficient estimator for staggered rollout designs proposed by Roth and Sant'Anna.
 }
 \examples{
-\donttest{
+
 # Load some libraries
 library(dplyr)
 library(purrr)
 library(MASS)
-# load the officer data
+set.seed(1234)
+# load the officer data and subset it
 df <- pj_officer_level_balanced
+group_random <- sample(unique(df$assigned), 10)
+df <- df[df$assigned \%in\% group_random,]
 # Calculate efficient estimator for the simple weighted average
 staggered(df = df,
   i = "uid",
@@ -104,7 +107,7 @@ eventPlotResults <- staggered(df = df,
   estimand = "eventstudy",
   eventTime = 0:23)
 eventPlotResults \%>\% head()
-}
+
 }
 \references{
 \cite{Roth, Jonatahan, and Sant'Anna, Pedro H. C. (2021),

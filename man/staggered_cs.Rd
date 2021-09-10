@@ -57,13 +57,15 @@ resultsDF A data.frame containing: estimate (the point estimate), se (the standa
 This functions calculates the Callaway & Sant'Anna (2020) estimator for staggered rollout designs using not-yet-treated units (including never-treated, if available) as controls.
 }
 \examples{
-\donttest{
 # Load some libraries
 library(dplyr)
 library(purrr)
 library(MASS)
-# load the officer data
+set.seed(1234)
+# load the officer data and subset it
 df <- pj_officer_level_balanced
+group_random <- sample(unique(df$assigned), 10)
+df <- df[df$assigned \%in\% group_random,]
 # We modify the data so that the time dimension is named t,
 # the period of treatment is named g,
 # the outcome is named y,
@@ -80,7 +82,7 @@ staggered_cs(df = df, estimand = "calendar")
 # (month 0 is instantaneous effect)
 eventPlotResults <- staggered_cs(df = df, estimand = "eventstudy", eventTime = 0:23)
 eventPlotResults \%>\% head()
-}
+
 }
 \references{
 \cite{Callaway, Brantly, and Sant'Anna, Pedro H. C. (2020),

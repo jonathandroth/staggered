@@ -924,13 +924,16 @@ processDF <- function(df, i, g, t, y){
 #' \cite{Roth, Jonatahan, and Sant'Anna, Pedro H. C. (2021),
 #'   'Efficient Estimation for Staggered Rollout Designs', arXiv: 2102.01291, \url{https://arxiv.org/abs/2102.01291}.}
 #' @examples
-#' \donttest{
+#'
 #' # Load some libraries
 #' library(dplyr)
 #' library(purrr)
 #' library(MASS)
-#' # load the officer data
+#' set.seed(1234)
+#' # load the officer data and subset it
 #' df <- pj_officer_level_balanced
+#' group_random <- sample(unique(df$assigned), 10)
+#' df <- df[df$assigned %in% group_random,]
 #' # Calculate efficient estimator for the simple weighted average
 #' staggered(df = df,
 #'   i = "uid",
@@ -962,7 +965,7 @@ processDF <- function(df, i, g, t, y){
 #'   estimand = "eventstudy",
 #'   eventTime = 0:23)
 #' eventPlotResults %>% head()
-#' }
+#'
 #' @export
 staggered <- function(df,
                       i = "i",
@@ -1317,13 +1320,15 @@ staggered <- function(df,
 #'   'Difference-in-Differences with Multiple Time Periods', Forthcoming at the Journal of Econometrics,
 #'   \doi{10.1016/j.jeconom.2020.12.001}.}
 #' @examples
-#' \donttest{
 #' # Load some libraries
 #' library(dplyr)
 #' library(purrr)
 #' library(MASS)
-#' # load the officer data
+#' set.seed(1234)
+#' # load the officer data and subset it
 #' df <- pj_officer_level_balanced
+#' group_random <- sample(unique(df$assigned), 10)
+#' df <- df[df$assigned %in% group_random,]
 #' # We modify the data so that the time dimension is named t,
 #' # the period of treatment is named g,
 #' # the outcome is named y,
@@ -1340,7 +1345,7 @@ staggered <- function(df,
 #' # (month 0 is instantaneous effect)
 #' eventPlotResults <- staggered_cs(df = df, estimand = "eventstudy", eventTime = 0:23)
 #' eventPlotResults %>% head()
-#' }
+#'
 #' @export
 staggered_cs <- function(df,
                          i = "i",
@@ -1418,13 +1423,16 @@ staggered_cs <- function(df,
 #'   'Estimating dynamic treatment effects in event studies with heterogeneous treatment effects', Forthcoming at the Journal of Econometrics,
 #'   \doi{10.1016/j.jeconom.2020.09.006}.}
 #' @examples
-#' \donttest{
+
 #' # Load some libraries
 #' library(dplyr)
 #' library(purrr)
 #' library(MASS)
-#' # load the officer data
+#' set.seed(1234)
+#' # load the officer data and subset it
 #' df <- pj_officer_level_balanced
+#' group_random <- sample(unique(df$assigned), 10)
+#' df <- df[df$assigned %in% group_random,]
 #' # We modify the data so that the time dimension is named t,
 #' # the period of treatment is named g,
 #' # the outcome is named y,
@@ -1441,7 +1449,7 @@ staggered_cs <- function(df,
 #' # (month 0 is instantaneous effect)
 #' eventPlotResults <- staggered_sa(df = df, estimand = "eventstudy", eventTime = 0:23)
 #' eventPlotResults %>% head()
-#' }
+#'
 #' @export
 staggered_sa <- function(df,
                          i = "i",
