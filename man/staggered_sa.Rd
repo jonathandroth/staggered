@@ -64,7 +64,7 @@ library(MASS)
 set.seed(1234)
 # load the officer data and subset it
 df <- pj_officer_level_balanced
-group_random <- sample(unique(df$assigned), 10)
+group_random <- sample(unique(df$assigned), 3)
 df <- df[df$assigned \%in\% group_random,]
 # We modify the data so that the time dimension is named t,
 # the period of treatment is named g,
@@ -80,8 +80,8 @@ staggered_sa(df = df, estimand = "cohort")
 staggered_sa(df = df, estimand = "calendar")
 # Calculate Sun and Abraham event-study coefficients for the first 24 months
 # (month 0 is instantaneous effect)
-eventPlotResults <- staggered_sa(df = df, estimand = "eventstudy", eventTime = 0:23)
-eventPlotResults \%>\% head()
+# eventPlotResults <- staggered_sa(df = df, estimand = "eventstudy", eventTime = 0:23)
+# eventPlotResults \%>\% head()
 
 }
 \references{

@@ -932,7 +932,7 @@ processDF <- function(df, i, g, t, y){
 #' set.seed(1234)
 #' # load the officer data and subset it
 #' df <- pj_officer_level_balanced
-#' group_random <- sample(unique(df$assigned), 10)
+#' group_random <- sample(unique(df$assigned), 3)
 #' df <- df[df$assigned %in% group_random,]
 #' # Calculate efficient estimator for the simple weighted average
 #' staggered(df = df,
@@ -1327,7 +1327,7 @@ staggered <- function(df,
 #' set.seed(1234)
 #' # load the officer data and subset it
 #' df <- pj_officer_level_balanced
-#' group_random <- sample(unique(df$assigned), 10)
+#' group_random <- sample(unique(df$assigned), 3)
 #' df <- df[df$assigned %in% group_random,]
 #' # We modify the data so that the time dimension is named t,
 #' # the period of treatment is named g,
@@ -1431,7 +1431,7 @@ staggered_cs <- function(df,
 #' set.seed(1234)
 #' # load the officer data and subset it
 #' df <- pj_officer_level_balanced
-#' group_random <- sample(unique(df$assigned), 10)
+#' group_random <- sample(unique(df$assigned), 3)
 #' df <- df[df$assigned %in% group_random,]
 #' # We modify the data so that the time dimension is named t,
 #' # the period of treatment is named g,
@@ -1447,8 +1447,8 @@ staggered_cs <- function(df,
 #' staggered_sa(df = df, estimand = "calendar")
 #' # Calculate Sun and Abraham event-study coefficients for the first 24 months
 #' # (month 0 is instantaneous effect)
-#' eventPlotResults <- staggered_sa(df = df, estimand = "eventstudy", eventTime = 0:23)
-#' eventPlotResults %>% head()
+#' # eventPlotResults <- staggered_sa(df = df, estimand = "eventstudy", eventTime = 0:23)
+#' # eventPlotResults %>% head()
 #'
 #' @export
 staggered_sa <- function(df,

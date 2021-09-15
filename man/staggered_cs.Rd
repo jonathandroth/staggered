@@ -64,7 +64,7 @@ library(MASS)
 set.seed(1234)
 # load the officer data and subset it
 df <- pj_officer_level_balanced
-group_random <- sample(unique(df$assigned), 10)
+group_random <- sample(unique(df$assigned), 3)
 df <- df[df$assigned \%in\% group_random,]
 # We modify the data so that the time dimension is named t,
 # the period of treatment is named g,
