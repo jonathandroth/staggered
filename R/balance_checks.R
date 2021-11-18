@@ -375,10 +375,11 @@ balance_checks <- function(df,
     #(using the remaining draws to calculate frt)
 
 
-    #seed_frt <-  1:num_fisher_permutations * base::floor(stats::rexp(1, rate = 1/500))
+    if(!is.null(seed)) set.seed(see)
+    seed_frt <-  1:num_fisher_permutations * base::floor(stats::rexp(1, rate = 1/500))
 
     FRTResults_bal <-
-      purrr::map(.x = 1:num_fisher_permutations,
+      purrr::map(.x = seed_frt, #1:num_fisher_permutations,
                  .f = purrr::possibly(
                    .f = ~permutation_t_test(df = permuteTreatment2(df = df_processed,
                                                                    i_g_table = i_g_table,
