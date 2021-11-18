@@ -11,7 +11,11 @@
 #' @param eventTime If using estimand = "eventstudy", specify what eventTime you want the event-study parameter for. The default is 0, the period in which treatment occurs. If a vector is provided, estimates are returned for all the event-times in the vector.
 #' @param use_DiD_A0 If this parameter is true, then Xhat corresponds with the scalar used by Callaway and Sant'Anna, so the Callaway and Sant'Anna estimator corresponds with beta=1. If it is false, the Xhat is a vector with all possible comparisons of pairs of cohorts before either is treated. The latter option should only be used when the number of possible comparisons is small relative to sample size.
 #' @param use_last_treated_only If true, then A_0_list and A_theta_list are created to only make comparisons with the last treated cohorts (as suggested by Sun and Abraham), rather than using not-yet-treated units as comparisons. If set to TRUE (and use_DiD_A0 = TRUE), then beta=1 corresponds with the Sun and Abraham estimator.
+#' @param compute_fisher If true, computes a Fisher Randomization Test using the studentized estimator.
+#' @param num_fisher_permutations The number of permutations to use in the Fisher Randomization Test (if compute_fisher = TRUE). Default is 500.
+#' @param return_full_vcv If this is true, then the function returns a list containing the full variance-covariance matrix for all Xhats.
 #' @param skip_data_check If true, skips checks that the data is balanced and contains the colums i,t,g,y. Used in internal recursive calls to increase speed, but not recommended for end-user.
+#' @param seed Set seed for permutations
 #' @return resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = TRUE, it likewise returns a list containing lists of matrices used in the vcv calculation.)
 #' @references
 #' \cite{Roth, Jonatahan, and Sant'Anna, Pedro H. C. (2021),
@@ -68,12 +72,15 @@ balance_checks <- function(df,
                            estimand = NULL,
                            A_0_list = NULL,
                            eventTime = 0,
-                           use_DiD_A0 = ifelse(is.null(A_0_list),
-                                               TRUE,
-                                               FALSE),
+                           use_DiD_A0 = NULL,
                            use_last_treated_only = FALSE,
-                           skip_data_check = FALSE){
+                           compute_fisher = FALSE,
+                           num_fisher_permutations = 500,
+                           return_full_vcv = FALSE,
+                           skip_data_check = FALSE,
+                           seed = NULL){
 
+  if(is.null(use_DiD_A0)) use_DiD_A0 <- ifelse(is.null(A_0_list),    TRUE,         FALSE)
   #Process the inputted df by checking the inputted columns and renaming to i,t,g,y, and balancing on (i,t)
   #We skip this if skip_data_check = TRUE
   if(!skip_data_check){
@@ -85,10 +92,11 @@ balance_checks <- function(df,
     #Balance the panel (and throw a warning if original panel is unbalanced)
     df <- balance_df(df = df)
   }
+  df_processed <- df
 
 
   #  Compute number of units per cohort
-  cohort_size <- base::table(df$g)/base::length(base::table(df$t))
+  cohort_size <- base::table(df_processed$g)/base::length(base::table(df_processed$t))
   # Flag for singleton cohorts
   flag_singleton <- as.numeric(names(cohort_size[(cohort_size==1)]))
   # Drop cohorts which are singleton
@@ -101,7 +109,7 @@ balance_checks <- function(df,
       base::warning(paste0("The treatment cohorts g = ", gpaste, " have a single cross-sectional unit only. We drop these cohorts."))
     }
 
-    df <- df[(df$g %in% flag_singleton) == FALSE,]
+    df_processed <- df_processed[(df_processed$g %in% flag_singleton) == FALSE,]
   }
 
 
@@ -138,7 +146,7 @@ balance_checks <- function(df,
   #   return(resultsDF)
   # }
 
-  g_level_summaries <- compute_g_level_summaries(df, is_balanced = TRUE)
+  g_level_summaries <- compute_g_level_summaries(df_processed, is_balanced = TRUE)
   Ybar_g_list <- g_level_summaries$Ybar_g_List
   S_g_list <- g_level_summaries$S_g_List
   N_g_list <- g_level_summaries$N_g_List
@@ -270,7 +278,7 @@ balance_checks <- function(df,
                                .f = function(A0){ return(do.call(rbind, A0)) }
       )
 
-      estim <- c("all_simple","all_cohort","all_calendar",paste0("all_ES",eventTime))
+      estim <- c("all_simple","all_cohort","all_calendar", paste0("all_ES",eventTime))
 
 
     }
@@ -282,17 +290,143 @@ balance_checks <- function(df,
                                               N_g_list = N_g_list)
 
 
+  se_Xhat <- sqrt(diag(as.matrix(balance_checks_Xhat$Xvar)))
   resultsDF <- data.frame(Xhat = balance_checks_Xhat$Xhat,
-                          se_Xhat = diag(balance_checks_Xhat$Xvar),
+                          se_Xhat = se_Xhat,
+                          t_test = abs(balance_checks_Xhat$Xhat/se_Xhat),
+                          pvalue_t = 2*stats::pnorm(-abs(balance_checks_Xhat$Xhat/se_Xhat)),
                           Wald_test_Xhat = balance_checks_Xhat$Wald_test_Xhat,
-                          N = balance_checks_Xhat$N,
                           pvalue_Wald = stats::pchisq(balance_checks_Xhat$Wald_test_Xhat,
                                                       df = length( balance_checks_Xhat$Xhat),
                                                       lower.tail = FALSE),
+                          N = balance_checks_Xhat$N,
+                          fisher_pval = NA,
+                          fisher_supt_pval = NA,
+                          num_fisher_permutations = NA,
+
                           estimand = estim
   )
 
-  return(resultsDF)
+  Xvar = NULL
+
+
+  permutation_t_test <- function(
+    df,
+    A_0_list){
+
+
+    g_level_summaries <- compute_g_level_summaries(df, is_balanced = TRUE)
+    Ybar_g_list <- g_level_summaries$Ybar_g_List
+    S_g_list <- g_level_summaries$S_g_List
+    N_g_list <- g_level_summaries$N_g_List
+    g_list <- g_level_summaries$g_list
+    t_list <- g_level_summaries$t_list
+
+    balance_checks_Xhat <- compute_balance_test(Ybar_g_list = Ybar_g_list,
+                                                A_0_list = A_0_list,
+                                                S_g_list = S_g_list,
+                                                N_g_list = N_g_list)
+
+    se_Xhat <- sqrt(diag(as.matrix(balance_checks_Xhat$Xvar)))
+    t_test <- abs(balance_checks_Xhat$Xhat/se_Xhat)
+    as.matrix(t_test, nrow = 1)
+  }
+
+
+  ## Do FRT, if specified
+  permuteTreatment2 <- function(df, i_g_table, seed = NULL){
+    #This function takes a data.frame with columns i and g, and permutes the values of g assigned to i
+    # The input i_g_table has the unique combinations of (i,g) in df, and is calculated outside for speed improvements
+
+    #Draw a random permutation of the elements of first_period_df
+    if(!is.null(seed)) set.seed(seed)
+    n = base::NROW(i_g_table)
+    randIndex <-
+      sample.int(n = n,
+                 size = n,
+                 replace = FALSE)
+
+    #Replace first_period_df$g with a permuted version based on randIndex
+    i_g_table$g <- i_g_table$g[randIndex]
+
+    #Merge the new treatment assignments back with the original
+    df$g <- NULL
+    df <- dplyr::left_join(df,
+                           i_g_table,
+                           by = c("i"))
+
+    return(as.data.frame(df))
+  }
+
+
+  if(compute_fisher == TRUE){
+
+    #Find unique pairs of (i,g). This will be used for computing the permutations
+    # i_g_table <- df %>%
+    #              dplyr::filter(t == min(t)) %>%
+    #              dplyr::select(i,g)
+
+    i_g_table <- df_processed %>%
+      dplyr::filter(t == min(t))
+    i_g_table <- i_g_table[,c("i","g")]
+
+    #Now, we compute the FRT for each seed, permuting treatment for each one
+    #We catch any errors in the FRT simulations, and throw a warning if at least one has an error
+    #(using the remaining draws to calculate frt)
+
+
+    #seed_frt <-  1:num_fisher_permutations * base::floor(stats::rexp(1, rate = 1/500))
+
+    FRTResults_bal <-
+      purrr::map(.x = 1:num_fisher_permutations,
+                 .f = purrr::possibly(
+                   .f = ~permutation_t_test(df = permuteTreatment2(df = df_processed,
+                                                                   i_g_table = i_g_table,
+                                                                   seed = .x),
+                                            A_0_list = A_0_list) ,
+                   otherwise = NULL)
+      ) %>%
+      purrr::discard(base::is.null)
+
+    FRTResults_bal <- base::t(sapply(FRTResults_bal, base::rbind))
+    FRTResults_bal <- as.data.frame(FRTResults_bal)
+
+    successful_frt_draws <- baseNROW(FRTResults_bal)
+
+
+
+
+    FRTResults2 <- FRTResults_bal
+
+    if(successful_frt_draws < num_fisher_permutations){
+      warning("There was an error in at least one of the FRT simulations. Removing the problematic draws.")
+    }
+
+    # Comput sup-t tests
+    FRT_t <- as.numeric(base::apply(FRTResults_bal, 1, max))
+    max_t <- max(resultsDF$t_test)
+    resultsDF$fisher_supt_pval <- mean( max_t < FRT_t )
+
+    # Need to compute p-value per row
+    resultsDF$fisher_pval <- base::rowMeans(apply(FRTResults_bal, 1, '>', resultsDF$t_test))
+
+
+    resultsDF$num_fisher_permutations <- successful_frt_draws
+  }
+
+  resultsDF <- as.data.frame(resultsDF)
+
+  if(return_full_vcv){
+    Xvar = balance_checks_Xhat$Xvar
+  }
+
+  list_results <- list(resultsDF = resultsDF,
+                       Xvar = Xvar)
+
+  return(list_results)
+
+
+
 
 
 }

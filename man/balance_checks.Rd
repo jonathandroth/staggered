@@ -13,9 +13,13 @@ balance_checks(
   estimand = NULL,
   A_0_list = NULL,
   eventTime = 0,
-  use_DiD_A0 = ifelse(is.null(A_0_list), TRUE, FALSE),
+  use_DiD_A0 = NULL,
   use_last_treated_only = FALSE,
-  skip_data_check = FALSE
+  compute_fisher = FALSE,
+  num_fisher_permutations = 500,
+  return_full_vcv = FALSE,
+  skip_data_check = FALSE,
+  seed = NULL
 )
 }
 \arguments{
@@ -39,7 +43,15 @@ balance_checks(
 
 \item{use_last_treated_only}{If true, then A_0_list and A_theta_list are created to only make comparisons with the last treated cohorts (as suggested by Sun and Abraham), rather than using not-yet-treated units as comparisons. If set to TRUE (and use_DiD_A0 = TRUE), then beta=1 corresponds with the Sun and Abraham estimator.}
 
+\item{compute_fisher}{If true, computes a Fisher Randomization Test using the studentized estimator.}
+
+\item{num_fisher_permutations}{The number of permutations to use in the Fisher Randomization Test (if compute_fisher = TRUE). Default is 500.}
+
+\item{return_full_vcv}{If this is true, then the function returns a list containing the full variance-covariance matrix for all Xhats.}
+
 \item{skip_data_check}{If true, skips checks that the data is balanced and contains the colums i,t,g,y. Used in internal recursive calls to increase speed, but not recommended for end-user.}
+
+\item{seed}{Set seed for permutations}
 }
 \value{
 resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = TRUE, it likewise returns a list containing lists of matrices used in the vcv calculation.)
