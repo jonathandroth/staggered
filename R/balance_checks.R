@@ -392,7 +392,7 @@ balance_checks <- function(df,
     FRTResults_bal <- base::t(sapply(FRTResults_bal, base::rbind))
     FRTResults_bal <- as.data.frame(FRTResults_bal)
 
-    successful_frt_draws <- baseNROW(FRTResults_bal)
+    successful_frt_draws <- base::NROW(FRTResults_bal)
 
 
 
