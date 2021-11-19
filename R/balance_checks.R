@@ -307,7 +307,7 @@ balance_checks <- function(df,
                           estimand = estim
   )
 
-  Xvar = NULL
+  Xvar1 = NULL
 
 
   permutation_t_test <- function(
@@ -358,7 +358,7 @@ balance_checks <- function(df,
     return(as.data.frame(df))
   }
 
-
+  FRTResults_bal = NULL
   if(compute_fisher == TRUE){
 
     #Find unique pairs of (i,g). This will be used for computing the permutations
@@ -390,14 +390,16 @@ balance_checks <- function(df,
       purrr::discard(base::is.null)
 
     FRTResults_bal <- base::t(sapply(FRTResults_bal, base::rbind))
-    FRTResults_bal <- as.data.frame(FRTResults_bal)
+    FRTResults_bal <- as.matrix(FRTResults_bal)
 
     successful_frt_draws <- base::NROW(FRTResults_bal)
 
+    if(successful_frt_draws == 1){
+      FRTResults_bal <- base::t(FRTResults_bal)
+      FRTResults_bal <- as.matrix(FRTResults_bal)
+    }
 
-
-
-    FRTResults2 <- FRTResults_bal
+    successful_frt_draws <- base::NROW(FRTResults_bal)
 
     if(successful_frt_draws < num_fisher_permutations){
       warning("There was an error in at least one of the FRT simulations. Removing the problematic draws.")
@@ -409,7 +411,18 @@ balance_checks <- function(df,
     resultsDF$fisher_supt_pval <- mean( max_t < FRT_t )
 
     # Need to compute p-value per row
-    resultsDF$fisher_pval <- base::rowMeans(apply(FRTResults_bal, 1, '>', resultsDF$t_test))
+
+
+    fisher_pval <- apply(FRTResults_bal, 1, '>', resultsDF$t_test)
+
+
+    if(base::is.matrix(fisher_pval)) {
+      fisher_pval <- base::rowMeans(fisher_pval)
+    } else {
+      fisher_pval <- mean(fisher_pval)
+    }
+
+    resultsDF$fisher_pval <- fisher_pval
 
 
     resultsDF$num_fisher_permutations <- successful_frt_draws
@@ -418,11 +431,12 @@ balance_checks <- function(df,
   resultsDF <- as.data.frame(resultsDF)
 
   if(return_full_vcv){
-    Xvar = balance_checks_Xhat$Xvar
+    Xvar1 = balance_checks_Xhat$Xvar
   }
 
   list_results <- list(resultsDF = resultsDF,
-                       Xvar = Xvar)
+                       Xvar = Xvar1,
+                       FRTResults = FRTResults_bal)
 
   return(list_results)
 
