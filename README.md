@@ -45,6 +45,7 @@ for modifying and plotting the results.
 ``` r
 library(staggered) #load the staggered package
 library(dplyr) #load dplyr for data manipulation
+#> Warning: package 'dplyr' was built under R version 4.1.2
 #> 
 #> Attaching package: 'dplyr'
 #> The following objects are masked from 'package:stats':

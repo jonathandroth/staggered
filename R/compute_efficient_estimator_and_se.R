@@ -320,7 +320,8 @@ compute_se_Thetahat_beta <- function(beta,
                                      g_list,
                                      t_list,
                                      Xvar_list = NULL,
-                                     return_beta_sum = FALSE){
+                                     return_beta_sum = FALSE,
+                                     gMin = NULL){
 
   #This function computes the standard error, using the version sigma_** that adjust for pre-treatment covariates
   # If return_beta_sum = TRUE, it returns a list wit
@@ -332,9 +333,11 @@ compute_se_Thetahat_beta <- function(beta,
                                                           S_g_list,
                                                           N_g_list,
                                                           Xvar_list =  Xvar_list)
+  if(is.null(gMin)){
+    gMin <- computeGMin(A_theta_list = A_theta_list,
+                        g_list = g_list)
 
-  gMin <- computeGMin(A_theta_list = A_theta_list,
-                      g_list = g_list)
+  }
 
   g_geq_gMin_index <- which(g_list >= gMin) #which indices of g are >= gMin
 
@@ -389,7 +392,9 @@ compute_se_Thetahat_beta <- function(beta,
 
   var_conservative <- seConservative^2
   if(var_conservative - adjustmentFactor < 0){
+    if(var_conservative != 0){
     warning("var_conservative is less than adjustmentFactor")
+    }
     se_adjusted <- 0
   }else{
     se_adjusted <- sqrt( var_conservative - adjustmentFactor )
@@ -830,12 +835,38 @@ calculate_full_vcv <- function(eventPlotResultsList, resultsDF){
   vcv_neyman <- base::Reduce(f = '+', x = vcv_neyman_terms_list)
 
 
-  stacked_betahat_g_sum <- base::Reduce(x = purrr::map(.x = eventPlotResultsList, .f = ~base::t(.x$betahat_g_sum)),
-                                        f = rbind)
+  ##Next, we compute the refinement to the variance estimator
 
-  vcv_adjustment <- 1/eventPlotResultsList[[1]]$N * stacked_betahat_g_sum %*% eventPlotResultsList[[1]]$avg_MSM %*% base::t(stacked_betahat_g_sum)
+  #First, we find the earliest gmin across the different event-study coefs
+  gMin_vec <- purrr::map_dbl(.x = eventPlotResultsList,
+                              .f = ~computeGMin(A_theta_list = .x$A_theta_list,
+                                                g_list = .x$g_list)  )
+
+  gMin <- min(gMin_vec)
+
+  betahat_g_list <- purrr::map(.x = eventPlotResultsList,
+                               .f = ~compute_se_Thetahat_beta(beta = .x$beta,
+                                                             Ybar_g_list = .x$Ybar_g_list,
+                                                             A_theta_list = .x$A_theta_list,
+                                                             A_0_list = .x$A_0_list,
+                                                             S_g_list = .x$S_g_list,
+                                                             N_g_list = .x$N_g_list,
+                                                             g_list = .x$g_list,
+                                                             t_list = .x$t_list,
+                                                             return_beta_sum = T,
+                                                             gMin = gMin
+                                                             ))
+
+  stacked_betahat_g_sum <- purrr::map(.x = betahat_g_list, .f = ~base::t(.x$betahat_g_sum)) %>%
+                           base::Reduce(x = ., f = rbind)
+
+  vcv_adjustment <- 1/eventPlotResultsList[[1]]$N * stacked_betahat_g_sum %*% betahat_g_list[[1]]$avg_MSM %*% base::t(stacked_betahat_g_sum)
 
   vcv <- vcv_neyman - vcv_adjustment
+
+  #Set negative variances, if any, to 0 (arises from numerical precision issues sometimes)
+  var_negative <- which( diag(vcv) < 0 )
+  vcv[var_negative, var_negative] <- 0
 
   return(list(vcv = vcv, vcv_neyman = vcv_neyman))
 }
@@ -1286,7 +1317,10 @@ staggered <- function(df,
                         avg_MSM = seResults$avg_MSM,
                         S_g_list = S_g_list,
                         N_g_list = N_g_list,
-                        N = seResults$N)
+                        N = seResults$N,
+                        g_list = g_list,
+                        t_list = t_list,
+                        Ybar_g_list = Ybar_g_list)
 
     return(resultsList)
   }
