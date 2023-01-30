@@ -40,7 +40,7 @@ create_A0_list_for_ATE_tg <- function(t,
         event_time_index <- which(t_list < g)
         n_event_time_index <- length(event_time_index)
         for (j in 1 : n_event_time_index) {
-          A0_g[j,n_event_time_index[j] ] <- N_g / N_treated
+          A0_g[j,event_time_index[j] ] <- N_g / N_treated
         }
       }
     }
