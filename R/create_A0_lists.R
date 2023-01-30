@@ -5,7 +5,8 @@ create_A0_list_for_ATE_tg <- function(t,
                                       g_list,
                                       t_list,
                                       N_g_list,
-                                      use_last_treated_only = FALSE){
+                                      use_last_treated_only = FALSE,
+                                      use_all_lags = FALSE){
   numPeriods <- length(t_list)
   #if(t < g){warning("t is less than g. ATE(t,g) is zero by assumption")}
   if(t >= max(g_list)){
@@ -16,15 +17,32 @@ create_A0_list_for_ATE_tg <- function(t,
 
   N_treated <- N_g_list[[treated_cohort_index]]
 
+  numK_lags <- 1
+  if(use_all_lags == TRUE){
+    numK_lags <- numPeriods - 2 + (Inf %in% g_list )
+  }
+
+
+
   #Create A0 for the treated units
   A0_g_treated_fn <- function(gIndex){
-    A0_g <- matrix(0, nrow = 1, ncol = numPeriods)
+    A0_g <- matrix(0, nrow = numK_lags, ncol = numPeriods)
 
     if(gIndex == treated_cohort_index){
-      g <- g_list[gIndex]
-      N_g <- N_g_list[[gIndex]]
-      event_time_index <- which(t_list == g-1)
-      A0_g[event_time_index] <- N_g / N_treated
+      if(numK_lags == 1){
+        g <- g_list[gIndex]
+        N_g <- N_g_list[[gIndex]]
+        event_time_index <- which(t_list == g-1)
+        A0_g[event_time_index] <- N_g / N_treated
+      } else {
+        g <- g_list[gIndex]
+        N_g <- N_g_list[[gIndex]]
+        event_time_index <- which(t_list < g)
+        n_event_time_index <- length(event_time_index)
+        for (j in 1 : n_event_time_index) {
+          A0_g[j,n_event_time_index[j] ] <- N_g / N_treated
+        }
+      }
     }
     return(A0_g)
   }
@@ -38,7 +56,10 @@ create_A0_list_for_ATE_tg <- function(t,
   }else{
     #If use_last_treated_only, compare only to the last treated cohort (i.e. max(G))
     control_cohort_indices <- purrr::map(.x = 1:length(g_list),
-                                         .f = ~ which( (g_list > t) & (g_list ==  max(g_list) )) )
+                                         .f = ~ which( (g_list > t) &
+                                                         (g_list ==  max(g_list) )
+                                         )
+    )
   }
 
 
@@ -49,7 +70,9 @@ create_A0_list_for_ATE_tg <- function(t,
   createControlWeights_helper <- function(control_g_index,
                                           treated_g_index = treated_cohort_index){
     #This function creates the weights for the cohort in control_g_index as a controls for the cohort in treated_g_index
-    control_weights <- matrix(0,nrow =1, ncol = numPeriods)
+    control_weights <- matrix(0,
+                              nrow = numK_lags,
+                              ncol = numPeriods)
 
     #If control_g is not a valid control, return 0
     if(! (control_g_index %in% control_cohort_indices[[treated_g_index]]) ){
@@ -60,9 +83,17 @@ create_A0_list_for_ATE_tg <- function(t,
     N_g_control <- N_g_list[[control_g_index]]
     N_g_treated <- N_g_list[[treated_g_index]]
 
-    t_control_index <- which(t_list == g-1)
+    if(numK_lags == 1){
+      t_control_index <- which(t_list == g-1)
 
-    control_weights[t_control_index] <- -N_g_control / N_control_cohorts[treated_g_index]
+      control_weights[t_control_index] <- -N_g_control / N_control_cohorts[treated_g_index]
+    } else {
+      t_control_index <- which(t_list < g)
+      n_t_control_indexes <- length(t_control_index)
+      for (j in 1 : n_t_control_indexes) {
+        control_weights[j,t_control_index[j] ] <- -N_g_control / N_control_cohorts[treated_g_index]
+      }
+    }
     return(control_weights)
   }
 
@@ -75,9 +106,9 @@ create_A0_list_for_ATE_tg <- function(t,
   # }
 
   A0_treated_list <- purrr::map(.x = 1:length(g_list),
-                                A0_g_treated_fn)
+                                .f = A0_g_treated_fn)
   A0_control_list <- purrr::map(.x = 1:length(g_list),
-                                createControlWeights_helper )
+                                .f = createControlWeights_helper )
   A0_list <- purrr::map2(.x = A0_treated_list,
                          .y = A0_control_list,
                          .f = ~ .x + .y)
@@ -89,7 +120,8 @@ create_A0_list_for_event_study <- function(eventTime,
                                            g_list,
                                            t_list,
                                            N_g_list,
-                                           use_last_treated_only = FALSE){
+                                           use_last_treated_only = FALSE,
+                                           use_all_lags = FALSE){
 
   #Create A0s for an ``event-study'' coefficient at lag eventTime
   # This estimand is the average treatment effects for units eventTime periods after first being treated
@@ -115,7 +147,8 @@ create_A0_list_for_event_study <- function(eventTime,
                                                                                g_list = g_list ,
                                                                                t_list = t_list,
                                                                                N_g_list = N_g_list,
-                                                                               use_last_treated_only = use_last_treated_only) ) )
+                                                                               use_last_treated_only = use_last_treated_only,
+                                                                               use_all_lags = use_all_lags) ) )
 
   if(length(eligible_cohort_index) == 1){
     A0_list <- A0_lists[[1]]
@@ -132,7 +165,8 @@ create_A0_list_for_ATE_calendar_t <- function(t,
                                               g_list,
                                               t_list,
                                               N_g_list,
-                                              use_last_treated_only = FALSE){
+                                              use_last_treated_only = FALSE,
+                                              use_all_lags = FALSE){
 
   treated_by_t_indices <- which(g_list <= t)
   N_total_treated <- sum( unlist(N_g_list[treated_by_t_indices]) )
@@ -144,7 +178,8 @@ create_A0_list_for_ATE_calendar_t <- function(t,
                                                                                g_list = g_list ,
                                                                                t_list = t_list,
                                                                                N_g_list = N_g_list,
-                                                                               use_last_treated_only = use_last_treated_only) ) )
+                                                                               use_last_treated_only = use_last_treated_only,
+                                                                               use_all_lags = use_all_lags) ) )
 
   if(length(treated_by_t_indices) == 1){
     A0_list <- A0_lists[[1]]
@@ -161,7 +196,8 @@ create_A0_list_for_ATE_cohort_g <- function(g,
                                             g_list,
                                             t_list,
                                             N_g_list,
-                                            use_last_treated_only = FALSE){
+                                            use_last_treated_only = FALSE,
+                                            use_all_lags = FALSE){
 
   treated_period_indices <- which((t_list >= g) & (t_list < max(g_list)))
   T_treated <- length( t_list[treated_period_indices] )
@@ -173,7 +209,8 @@ create_A0_list_for_ATE_cohort_g <- function(g,
                                                                                g_list = g_list ,
                                                                                t_list = t_list,
                                                                                N_g_list = N_g_list,
-                                                                               use_last_treated_only = use_last_treated_only) ) )
+                                                                               use_last_treated_only = use_last_treated_only,
+                                                                               use_all_lags = use_all_lags) ) )
 
   if(T_treated == 1){
     A0_list <- A0_lists[[1]]
@@ -190,7 +227,8 @@ create_A0_list_for_ATE_cohort_g <- function(g,
 create_A0_list_for_cohort_average_ATE <- function(g_list,
                                                   t_list,
                                                   N_g_list,
-                                                  use_last_treated_only = FALSE){
+                                                  use_last_treated_only = FALSE,
+                                                  use_all_lags = FALSE){
 
   g_eligible_index <-  which(g_list < max(g_list) & g_list <= max(t_list))
 
@@ -202,7 +240,8 @@ create_A0_list_for_cohort_average_ATE <- function(g_list,
                                                                                      g_list = g_list,
                                                                                      t_list = t_list,
                                                                                      N_g_list = N_g_list,
-                                                                                     use_last_treated_only = use_last_treated_only) ) )
+                                                                                     use_last_treated_only = use_last_treated_only,
+                                                                                     use_all_lags = use_all_lags) ) )
 
 
   A0_list <- sum_of_lists(A0_lists)
@@ -216,7 +255,8 @@ create_A0_list_for_cohort_average_ATE <- function(g_list,
 create_A0_list_for_calendar_average_ATE <- function(g_list,
                                                     t_list,
                                                     N_g_list,
-                                                    use_last_treated_only = FALSE){
+                                                    use_last_treated_only = FALSE,
+                                                    use_all_lags = FALSE){
 
   t_eligible_index <-  which(t_list >= min(g_list) & t_list < max(g_list))
 
@@ -228,7 +268,8 @@ create_A0_list_for_calendar_average_ATE <- function(g_list,
                                                                                        g_list = g_list,
                                                                                        t_list = t_list,
                                                                                        N_g_list = N_g_list,
-                                                                                       use_last_treated_only = use_last_treated_only) ) )
+                                                                                       use_last_treated_only = use_last_treated_only,
+                                                                                       use_all_lags = use_all_lags) ) )
 
 
   A0_list <- sum_of_lists(A0_lists)
@@ -241,7 +282,8 @@ create_A0_list_for_calendar_average_ATE <- function(g_list,
 create_A0_list_for_simple_average_ATE <- function(g_list,
                                                   t_list,
                                                   N_g_list,
-                                                  use_last_treated_only = FALSE){
+                                                  use_last_treated_only = FALSE,
+                                                  use_all_lags = FALSE){
 
   # AVOID NOTE ON CRAN
   g <- NULL
@@ -254,9 +296,9 @@ create_A0_list_for_simple_average_ATE <- function(g_list,
 
   #Join in N_g for each of these pairs
   gt_df <- dplyr::left_join( gt_df,
-                      data.frame(g= g_list,
-                                 N_g = unlist(N_g_list)),
-                      by = "g")
+                             data.frame(g= g_list,
+                                        N_g = unlist(N_g_list)),
+                             by = "g")
 
   #Calculate sum of N_g for all eligible (t,g) pairs
   N_total <- sum(gt_df$N_g)
@@ -268,7 +310,8 @@ create_A0_list_for_simple_average_ATE <- function(g_list,
                                                                                g_list = g_list ,
                                                                                t_list = t_list,
                                                                                N_g_list = N_g_list,
-                                                                               use_last_treated_only = use_last_treated_only) ) )
+                                                                               use_last_treated_only = use_last_treated_only,
+                                                                               use_all_lags = use_all_lags) ) )
 
 
   A0_list <- sum_of_lists(A0_lists)

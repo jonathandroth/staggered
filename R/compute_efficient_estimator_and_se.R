@@ -173,7 +173,10 @@ compute_Betastar <- function(Ybar_g_list,
     #Xvar_list <- pmap(.l = list(A_0_list, S_g_list, N_g_list) , .f = function(A0,S,N){ return(1/N * A0 %*% S %*% base::t(A0) ) } )
     Xvar_list <- purrr::pmap(.l = list(A_0_list,
                                        S_g_list, N_g_list),
-                             .f = function(A0,S,N){ return(1/N * eigenMapMatMult( eigenMapMatMult(A0,S) , base::t(A0) ) ) }
+                             .f = function(A0,S,N){
+                               return(1/N * eigenMapMatMult( eigenMapMatMult(A0,S) ,
+                                                             base::t(A0) ) )
+                               }
     )
   }
 
@@ -185,7 +188,9 @@ compute_Betastar <- function(Ybar_g_list,
                                             A_theta_list,
                                             S_g_list,
                                             N_g_list),
-                                  .f = function(A0,A_theta,S,N){ return(1/N * A0 %*% S %*% base::t(A_theta) ) }
+                                  .f = function(A0,A_theta,S,N){
+                                    return(1/N * A0 %*% S %*% base::t(A_theta) )
+                                    }
   )
   #X_theta_cov <- purrr::reduce(.x = X_theta_cov_list, .f = sum)
   X_theta_cov <- base::Reduce(x = X_theta_cov_list, f = '+')
@@ -947,6 +952,7 @@ processDF <- function(df, i, g, t, y){
 #' @param return_full_vcv If this is true and estimand = "eventstudy", then the function returns a list containing the full variance-covariance matrix for the event-plot estimates in addition to the usual dataframe with the estimates
 #' @param return_matrix_list If true, the function returns a list of the A_0_list and A_theta_list matrices along with betastar. This is used for internal recursive calls to calculate the variance-covariance matrix, and will generally not be needed by the end-user. Default is False.
 #' @param use_last_treated_only If true, then A_0_list and A_theta_list are created to only make comparisons with the last treated cohorts (as suggested by Sun and Abraham), rather than using not-yet-treated units as comparisons. If set to TRUE (and use_DiD_A0 = TRUE), then beta=1 corresponds with the Sun and Abraham estimator.
+#' @param use_all_lags If true, then use all pre-treatment periods to create Xhat. If false (default), only use data from period g-1 in Xhat.
 #' @param compute_fisher If true, computes a Fisher Randomization Test using the studentized estimator.
 #' @param num_fisher_permutations The number of permutations to use in the Fisher Randomization Test (if compute_fisher = TRUE). Default is 500.
 #' @param skip_data_check If true, skips checks that the data is balanced and contains the colums i,t,g,y. Used in internal recursive calls to increase speed, but not recommended for end-user.
@@ -1014,6 +1020,7 @@ staggered <- function(df,
                       return_full_vcv = FALSE,
                       return_matrix_list = FALSE,
                       use_last_treated_only = FALSE,
+                      use_all_lags = FALSE,
 					            compute_fisher = FALSE,
 					            num_fisher_permutations = 500,
 					            skip_data_check = FALSE){
@@ -1073,10 +1080,12 @@ staggered <- function(df,
                                  use_DiD_A0 = use_DiD_A0,
                                  return_matrix_list = TRUE,
                                  use_last_treated_only = use_last_treated_only,
+                                 use_all_lags = use_all_lags,
                                  compute_fisher = compute_fisher,
                                  skip_data_check = T))
 
-    resultsDF <- purrr::reduce(.x = purrr::map(.x = eventPlotResultsList, .f = ~ .x$resultsDF),
+    resultsDF <- purrr::reduce(.x = purrr::map(.x = eventPlotResultsList,
+                                               .f = ~ .x$resultsDF),
                                .f = dplyr::bind_rows)
 
     #Add in eventTimes
@@ -1089,7 +1098,9 @@ staggered <- function(df,
 
 
 
-      resultsList <- list(resultsDF = resultsDF, vcv = vcvs$vcv, vcv_neyman = vcvs$vcv_neyman)
+      resultsList <- list(resultsDF = resultsDF,
+                          vcv = vcvs$vcv,
+                          vcv_neyman = vcvs$vcv_neyman)
 
       #Create stacked beta for the
       return(resultsList)
@@ -1152,23 +1163,27 @@ staggered <- function(df,
       A_0_list <- create_A0_list_for_simple_average_ATE(g_list = g_list,
                                                         t_list = t_list,
                                                         N_g_list = N_g_list,
-                                                        use_last_treated_only = use_last_treated_only)
+                                                        use_last_treated_only = use_last_treated_only,
+                                                        use_all_lags = use_all_lags)
     }else if(estimand == "cohort"){
       A_0_list <- create_A0_list_for_cohort_average_ATE(g_list = g_list,
                                                         t_list = t_list,
                                                         N_g_list = N_g_list,
-                                                        use_last_treated_only = use_last_treated_only)
+                                                        use_last_treated_only = use_last_treated_only,
+                                                        use_all_lags = use_all_lags)
     }else if(estimand == "calendar"){
       A_0_list <- create_A0_list_for_calendar_average_ATE(g_list = g_list,
                                                           t_list = t_list,
                                                           N_g_list = N_g_list,
-                                                          use_last_treated_only = use_last_treated_only)
+                                                          use_last_treated_only = use_last_treated_only,
+                                                          use_all_lags = use_all_lags)
     }else if(estimand == "eventstudy"){
       A_0_list <- create_A0_list_for_event_study(eventTime = eventTime,
                                                  g_list = g_list,
                                                  t_list = t_list,
                                                  N_g_list = N_g_list,
-                                                 use_last_treated_only = use_last_treated_only)
+                                                 use_last_treated_only = use_last_treated_only,
+                                                 use_all_lags = use_all_lags)
     }
   }
 
@@ -1276,10 +1291,10 @@ staggered <- function(df,
                                               A_theta_list = A_theta_list,
                                               A_0_list = A_0_list,
                                               eventTime = eventTime,
-                                              return_full_vcv = F,
-                                              return_matrix_list = F,
-                                              compute_fisher = F,
-                                              skip_data_check = T) %>% mutate(seed = .x),
+                                              return_full_vcv = FALSE,
+                                              return_matrix_list = FALSE,
+                                              compute_fisher = FALSE,
+                                              skip_data_check = TRUE) %>% mutate(seed = .x),
                    otherwise = NULL)
       ) %>%
       purrr::discard(base::is.null) %>%
