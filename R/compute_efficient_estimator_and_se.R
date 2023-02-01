@@ -952,6 +952,7 @@ processDF <- function(df, i, g, t, y){
 #' @param return_full_vcv If this is true and estimand = "eventstudy", then the function returns a list containing the full variance-covariance matrix for the event-plot estimates in addition to the usual dataframe with the estimates
 #' @param return_matrix_list If true, the function returns a list of the A_0_list and A_theta_list matrices along with betastar. This is used for internal recursive calls to calculate the variance-covariance matrix, and will generally not be needed by the end-user. Default is False.
 #' @param use_last_treated_only If true, then A_0_list and A_theta_list are created to only make comparisons with the last treated cohorts (as suggested by Sun and Abraham), rather than using not-yet-treated units as comparisons. If set to TRUE (and use_DiD_A0 = TRUE), then beta=1 corresponds with the Sun and Abraham estimator.
+#' @param num_lags Number of pre-treatment periods to include when computing Xhat. Default is 1. If `use_all_lags = TRUE`, this is ignored.
 #' @param use_all_lags If true, then use all pre-treatment periods to create Xhat. If false (default), only use data from period g-1 in Xhat.
 #' @param compute_fisher If true, computes a Fisher Randomization Test using the studentized estimator.
 #' @param num_fisher_permutations The number of permutations to use in the Fisher Randomization Test (if compute_fisher = TRUE). Default is 500.
@@ -1020,6 +1021,7 @@ staggered <- function(df,
                       return_full_vcv = FALSE,
                       return_matrix_list = FALSE,
                       use_last_treated_only = FALSE,
+                      num_lags = 1,
                       use_all_lags = FALSE,
 					            compute_fisher = FALSE,
 					            num_fisher_permutations = 500,
@@ -1080,6 +1082,7 @@ staggered <- function(df,
                                  use_DiD_A0 = use_DiD_A0,
                                  return_matrix_list = TRUE,
                                  use_last_treated_only = use_last_treated_only,
+                                 num_lags = num_lags,
                                  use_all_lags = use_all_lags,
                                  compute_fisher = compute_fisher,
                                  skip_data_check = T))
@@ -1164,18 +1167,21 @@ staggered <- function(df,
                                                         t_list = t_list,
                                                         N_g_list = N_g_list,
                                                         use_last_treated_only = use_last_treated_only,
+                                                        num_lags = num_lags,
                                                         use_all_lags = use_all_lags)
     }else if(estimand == "cohort"){
       A_0_list <- create_A0_list_for_cohort_average_ATE(g_list = g_list,
                                                         t_list = t_list,
                                                         N_g_list = N_g_list,
                                                         use_last_treated_only = use_last_treated_only,
+                                                        num_lags = num_lags,
                                                         use_all_lags = use_all_lags)
     }else if(estimand == "calendar"){
       A_0_list <- create_A0_list_for_calendar_average_ATE(g_list = g_list,
                                                           t_list = t_list,
                                                           N_g_list = N_g_list,
                                                           use_last_treated_only = use_last_treated_only,
+                                                          num_lags = num_lags,
                                                           use_all_lags = use_all_lags)
     }else if(estimand == "eventstudy"){
       A_0_list <- create_A0_list_for_event_study(eventTime = eventTime,
@@ -1183,6 +1189,7 @@ staggered <- function(df,
                                                  t_list = t_list,
                                                  N_g_list = N_g_list,
                                                  use_last_treated_only = use_last_treated_only,
+                                                 num_lags = num_lags,
                                                  use_all_lags = use_all_lags)
     }
   }
