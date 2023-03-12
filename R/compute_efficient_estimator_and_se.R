@@ -345,8 +345,8 @@ compute_se_Thetahat_beta <- function(beta,
   tMax <- max(t_list)
 
 
-  #Right now, we're assuming first period is 1. May want to relax this
-  if(gMin == tMin){
+  #Exit if first cohort is always treated
+  if(gMin <= tMin){
     if(!return_beta_sum){
       return(seConservative)
     }else{
