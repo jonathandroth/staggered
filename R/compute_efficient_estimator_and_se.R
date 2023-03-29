@@ -828,7 +828,17 @@ processDF <- function(df, i, g, t, y){
 
   # Re-label i, t, g, y
   oldnames <- c(i, t, g, y)
-  base::names(df)[base::match(oldnames, base::names(df))] <- c("i", "t", "g", "y")
+  newnames <- c("i", "t", "g", "y")
+  indices  <- base::which(!oldnames %in% newnames)
+  oldnames <- oldnames[indices]
+  newnames <- newnames[indices]
+  if ( base::length(newnames) ) {
+    dropnames <- base::intersect(newnames, base::names(df))
+    if ( base::length(dropnames) ) {
+      df <- df[,-base::match(dropnames, base::names(df))]
+    }
+    base::names(df)[base::match(oldnames, base::names(df))] <- newnames
+  }
 
   # data.table for speed
   return(data.table::data.table(df))
