@@ -1,97 +1,58 @@
-
-
+# Main internal helper
 create_A0_list_for_ATE_tg <- function(t,
                                       g,
                                       g_list,
                                       t_list,
                                       N_g_list,
                                       use_last_treated_only = FALSE){
+
   numPeriods <- length(t_list)
   #if(t < g){warning("t is less than g. ATE(t,g) is zero by assumption")}
-  if(t >= max(g_list)){
-    stop("t is greater than max(g)-1; ATE(t,g) is not identified.")
-  }
+  if(t >= max(g_list)){stop("t is greater than max(g)-1; ATE(t,g) is not identified.")}
+
   #Create A0s for ATT_{t,g}
   treated_cohort_index <- which(g_list == g)
-
-  N_treated <- N_g_list[[treated_cohort_index]]
+  # event_time_index <- which(t_list == (g-1))
 
   #Create A0 for the treated units
-  A0_g_treated_fn <- function(gIndex){
-    A0_g <- matrix(0, nrow = 1, ncol = numPeriods)
+  #NB: The old function looped through g_list and placed a 1 in the row
+  #where (g == g_list) and column where (t == t_list). But you can just
+  #put a one there directly.
 
-    if(gIndex == treated_cohort_index){
-      g <- g_list[gIndex]
-      N_g <- N_g_list[[gIndex]]
-      event_time_index <- which(t_list == g-1)
-      A0_g[event_time_index] <- N_g / N_treated
-    }
-    return(A0_g)
-  }
-
-
+  #NB: The old code made as many indices as number of cohorts, but the indices
+  #were all identical, so there is no reason to make copies,
   if(!use_last_treated_only){
     #Create a list of which cohorts are eligible to be controls for each of the cohorts
     #This will be a null list if not eligible
-    control_cohort_indices <- purrr::map(.x = 1:length(g_list),
-                                         .f = ~ which(g_list > t ))
+    control_cohort_indices <- which(g_list > t)
   }else{
     #If use_last_treated_only, compare only to the last treated cohort (i.e. max(G))
-    control_cohort_indices <- purrr::map(.x = 1:length(g_list),
-                                         .f = ~ which( (g_list > t) & (g_list ==  max(g_list) )) )
+    control_cohort_indices <- which((g_list > t) & (g_list ==  max(g_list)))
   }
+  N_control_cohorts <- sum(N_g_list[control_cohort_indices])
 
+  #This function creates the weights for the cohort in control_g_index
+  #as a controls for the cohort in treated_g_index
+  #
+  #NB: The old function looped through all g indices and returned a row of 0s
+  #if g is not in control_cohort_indices, else it returns a row of 0s with
+  #N_g/N_control in the ((g-1) == t_list)th column. But, again, you can just put
+  #that into those rows and column directly
 
-
-  N_control_cohorts <- purrr::map_dbl(.x = control_cohort_indices,
-                                      .f = ~ sum(unlist(N_g_list[.x])) )
-
-  createControlWeights_helper <- function(control_g_index,
-                                          treated_g_index = treated_cohort_index){
-    #This function creates the weights for the cohort in control_g_index as a controls for the cohort in treated_g_index
-    control_weights <- matrix(0,nrow =1, ncol = numPeriods)
-
-    #If control_g is not a valid control, return 0
-    if(! (control_g_index %in% control_cohort_indices[[treated_g_index]]) ){
-      return(control_weights)
-    }
-
-    g_treated <- g_list[treated_g_index]
-    N_g_control <- N_g_list[[control_g_index]]
-    N_g_treated <- N_g_list[[treated_g_index]]
-
-    t_control_index <- which(t_list == g-1)
-
-    control_weights[t_control_index] <- -N_g_control / N_control_cohorts[treated_g_index]
-    return(control_weights)
-  }
-
-  # createControlWeights <- function(control_g_index){
-  #   #Create the control weights for control_g_index using all treated cohorts, then sum them
-  #   controlWeights_g <- Reduce( x=  purrr::map(.x = eligible_cohort_index,
-  #                                       ~createControlWeights_helper(control_g_index, .x)  ) ,
-  #                               f= '+' )
-  #   return(controlWeights_g)
-  # }
-
-  A0_treated_list <- purrr::map(.x = 1:length(g_list),
-                                A0_g_treated_fn)
-  A0_control_list <- purrr::map(.x = 1:length(g_list),
-                                createControlWeights_helper )
-  A0_list <- purrr::map2(.x = A0_treated_list,
-                         .y = A0_control_list,
-                         .f = ~ .x + .y)
-  return(A0_list)
+  A_theta_t <- numeric(length(g_list))
+  A_theta_t[control_cohort_indices] <- - N_g_list[control_cohort_indices] / N_control_cohorts
+  A_theta_t[treated_cohort_index]   <- A_theta_t[treated_cohort_index] + 1
+  return(A_theta_t)
 }
 
 
 create_A0_list_for_event_study <- function(eventTime,
                                            g_list,
                                            t_list,
-                                           N_g_list,
+                                           N_g_DT,
                                            use_last_treated_only = FALSE){
 
-  #Create A0s for an ``event-study'' coefficient at lag eventTime
+  # Create A0s for an ``event-study'' coefficient at lag eventTime
   # This estimand is the average treatment effects for units eventTime periods after first being treated
   # The average is taken over all cohorts g such that there is some untreated cohort at g+eventTime
   # Cohorts are weighted by the cohort size (N_g)
@@ -101,31 +62,45 @@ create_A0_list_for_event_study <- function(eventTime,
 
   maxG <- max(g_list)
   eligible_cohort_index <- which( ((g_list + eventTime) < maxG ) & ((g_list + eventTime) <= max(t_list) ) )
+  N_g_list <- N_g_DT$N_g
 
   if(length(eligible_cohort_index) == 0){
     stop("There are no comparison cohorts for the given eventTime")
   }
 
-  N_eligible <- Reduce(x = N_g_list[eligible_cohort_index], sum)
+  A_0 <- matrix(0, length(g_list), length(t_list))
+  N_eligible <- sum(N_g_list[eligible_cohort_index])
 
-  A0_lists <- purrr::map(.x = eligible_cohort_index,
-                         .f = ~ scalar_product_lists(N_g_list[[.x]]/N_eligible ,
-                                                     create_A0_list_for_ATE_tg(t =g_list[.x]+eventTime,
-                                                                               g = g_list[.x],
-                                                                               g_list = g_list ,
-                                                                               t_list = t_list,
-                                                                               N_g_list = N_g_list,
-                                                                               use_last_treated_only = use_last_treated_only) ) )
-
-  if(length(eligible_cohort_index) == 1){
-    A0_list <- A0_lists[[1]]
-  }else{
-    A0_list <- sum_of_lists(A0_lists)
+  create_A0_tg_helper <- function(gIndex) {
+    g <- g_list[gIndex]
+    (N_g_list[gIndex]/N_eligible) *
+      create_A0_list_for_ATE_tg(g+eventTime, g, g_list, t_list, N_g_list, use_last_treated_only)
   }
-  return(A0_list)
+  tindices <- unlist(sapply(g_list[eligible_cohort_index], function(g) which(t_list == g-1)))
+  gindices <- unlist(sapply(eligible_cohort_index, function(g) if (any(t_list == g_list[g]-1)) g else NULL))
+  A_0[,tindices] <- sapply(eligible_cohort_index, create_A0_tg_helper)[,gindices]
+
+  return(A_0)
 }
 
 
+create_A0_list_for_calendar_average_ATE <- function(g_list,
+                                                    t_list,
+                                                    N_g_DT,
+                                                    use_last_treated_only = FALSE){
+
+  t_eligible_index <- which(t_list >= min(g_list) & t_list < max(g_list))
+  T_eligible <- length(t_eligible_index)
+  N_g_list <- N_g_DT$N_g
+  A_0 <- matrix(0, length(g_list), length(t_list))
+
+  create_A0_tg_helper <- function(t) {
+      create_A0_list_for_ATE_calendar_t(t, g_list, t_list, N_g_list, use_last_treated_only)
+  }
+  A_0 <- Reduce(`+`, lapply(t_list[t_eligible_index], create_A0_tg_helper))/T_eligible
+
+  return(A_0)
+}
 
 
 create_A0_list_for_ATE_calendar_t <- function(t,
@@ -135,26 +110,39 @@ create_A0_list_for_ATE_calendar_t <- function(t,
                                               use_last_treated_only = FALSE){
 
   treated_by_t_indices <- which(g_list <= t)
-  N_total_treated <- sum( unlist(N_g_list[treated_by_t_indices]) )
+  N_total_treated <- sum(N_g_list[treated_by_t_indices])
+  A_0_t <- matrix(0, length(g_list), length(t_list))
 
-  A0_lists <- purrr::map(.x = treated_by_t_indices,
-                         .f = ~ scalar_product_lists(N_g_list[[.x]]/N_total_treated ,
-                                                     create_A0_list_for_ATE_tg(t =t,
-                                                                               g = g_list[.x],
-                                                                               g_list = g_list ,
-                                                                               t_list = t_list,
-                                                                               N_g_list = N_g_list,
-                                                                               use_last_treated_only = use_last_treated_only) ) )
-
-  if(length(treated_by_t_indices) == 1){
-    A0_list <- A0_lists[[1]]
-  }else{
-    A0_list <- sum_of_lists(A0_lists)
+  create_A0_tg_helper <- function(gIndex) {
+      (N_g_list[gIndex] / N_total_treated) *
+          create_A0_list_for_ATE_tg(t, g_list[gIndex], g_list, t_list, N_g_list, use_last_treated_only)
   }
-  return(A0_list)
+  tindices <- unlist(sapply(g_list[treated_by_t_indices], function(g) which(t_list == g-1)))
+  gindices <- unlist(sapply(treated_by_t_indices, function(g) if (any(t_list == g_list[g]-1)) g else NULL))
+  A_0_t[,tindices] <- sapply(treated_by_t_indices, create_A0_tg_helper)[,gindices]
+
+  return(A_0_t)
 }
 
 
+create_A0_list_for_cohort_average_ATE <- function(g_list,
+                                                  t_list,
+                                                  N_g_DT,
+                                                  use_last_treated_only = FALSE){
+
+  N_g_list <- N_g_DT$N_g
+  g_eligible_index <-  which(g_list < max(g_list) & g_list <= max(t_list))
+  N_total_eligible <- sum(unlist(N_g_list[g_eligible_index]))
+  create_A0_tg_helper <- function(gIndex) {
+      (N_g_list[gIndex] / N_total_eligible) *
+          create_A0_list_for_ATE_cohort_g(g_list[gIndex], g_list, t_list, N_g_list, use_last_treated_only)
+  }
+  A_0 <- matrix(0, length(g_list), length(t_list))
+  tindices <- unlist(sapply(g_list[g_eligible_index], function(g) which(t_list == g-1)))
+  gindices <- unlist(sapply(g_eligible_index, function(g) if (any(t_list == g_list[g]-1)) g else NULL))
+  A_0[,tindices] <- sapply(g_eligible_index, create_A0_tg_helper)[,gindices]
+  return(A_0)
+}
 
 
 create_A0_list_for_ATE_cohort_g <- function(g,
@@ -162,117 +150,52 @@ create_A0_list_for_ATE_cohort_g <- function(g,
                                             t_list,
                                             N_g_list,
                                             use_last_treated_only = FALSE){
-
   treated_period_indices <- which((t_list >= g) & (t_list < max(g_list)))
-  T_treated <- length( t_list[treated_period_indices] )
-
-  A0_lists <- purrr::map(.x = treated_period_indices,
-                         .f = ~ scalar_product_lists(1/T_treated ,
-                                                     create_A0_list_for_ATE_tg(t =t_list[.x],
-                                                                               g = g,
-                                                                               g_list = g_list ,
-                                                                               t_list = t_list,
-                                                                               N_g_list = N_g_list,
-                                                                               use_last_treated_only = use_last_treated_only) ) )
-
-  if(T_treated == 1){
-    A0_list <- A0_lists[[1]]
-  }else{
-    A0_list <- sum_of_lists(A0_lists)
+  T_treated <- length(treated_period_indices)
+  A_theta_g <- matrix(0, length(g_list), length(t_list))
+  create_A0_tg_helper <- function(t) {
+      create_A0_list_for_ATE_tg(t, g, g_list, t_list, N_g_list, use_last_treated_only)
   }
-
-  return(A0_list)
+  A_0_g <- Reduce(`+`, lapply(t_list[treated_period_indices], create_A0_tg_helper))/T_treated
+  return(A_0_g)
 }
-
-
-
-
-create_A0_list_for_cohort_average_ATE <- function(g_list,
-                                                  t_list,
-                                                  N_g_list,
-                                                  use_last_treated_only = FALSE){
-
-  g_eligible_index <-  which(g_list < max(g_list) & g_list <= max(t_list))
-
-  N_total_eligible <- sum(unlist(N_g_list[g_eligible_index]))
-
-  A0_lists <- purrr::map(.x = g_eligible_index,
-                         .f = ~ scalar_product_lists(as.numeric(N_g_list[[.x]])/N_total_eligible,
-                                                     create_A0_list_for_ATE_cohort_g(g = g_list[.x],
-                                                                                     g_list = g_list,
-                                                                                     t_list = t_list,
-                                                                                     N_g_list = N_g_list,
-                                                                                     use_last_treated_only = use_last_treated_only) ) )
-
-
-  A0_list <- sum_of_lists(A0_lists)
-
-  return(A0_list)
-}
-
-
-
-
-create_A0_list_for_calendar_average_ATE <- function(g_list,
-                                                    t_list,
-                                                    N_g_list,
-                                                    use_last_treated_only = FALSE){
-
-  t_eligible_index <-  which(t_list >= min(g_list) & t_list < max(g_list))
-
-  T_eligible <- length(t_eligible_index)
-
-  A0_lists <- purrr::map(.x = t_eligible_index,
-                         .f = ~ scalar_product_lists(1/T_eligible,
-                                                     create_A0_list_for_ATE_calendar_t(t = t_list[.x],
-                                                                                       g_list = g_list,
-                                                                                       t_list = t_list,
-                                                                                       N_g_list = N_g_list,
-                                                                                       use_last_treated_only = use_last_treated_only) ) )
-
-
-  A0_list <- sum_of_lists(A0_lists)
-
-  return(A0_list)
-}
-
 
 
 create_A0_list_for_simple_average_ATE <- function(g_list,
                                                   t_list,
-                                                  N_g_list,
+                                                  N_g_DT,
                                                   use_last_treated_only = FALSE){
 
-  # AVOID NOTE ON CRAN
-  g <- NULL
+  N_g_list <- N_g_DT$N_g
 
   #Create a df with all the (g,t) pairs for which ATE is identified
-  gt_df <- purrr::cross_df( list(g = g_list,
-                                 t = t_list) )
-  gt_df <- gt_df %>% dplyr::filter(t >= g,
-                                   t< max(g_list))
-
   #Join in N_g for each of these pairs
-  gt_df <- dplyr::left_join( gt_df,
-                      data.frame(g= g_list,
-                                 N_g = unlist(N_g_list)),
-                      by = "g")
+  gt_df <- N_g_DT[data.table::CJ(g=g_list, t=t_list)[t >= g & t < max(g_list)]]
 
   #Calculate sum of N_g for all eligible (t,g) pairs
-  N_total <- sum(gt_df$N_g)
+  N_total <- gt_df[,sum(N_g)]
+  A_0 <- matrix(0, length(g_list), length(t_list))
+  gt_df[,N_g := N_g / N_total]
 
-  A0_lists <- purrr::map(.x = 1:NROW(gt_df),
-                         .f = ~ scalar_product_lists(gt_df$N_g[.x]/N_total,
-                                                     create_A0_list_for_ATE_tg(t = gt_df$t[.x],
-                                                                               g= gt_df$g[.x],
-                                                                               g_list = g_list ,
-                                                                               t_list = t_list,
-                                                                               N_g_list = N_g_list,
-                                                                               use_last_treated_only = use_last_treated_only) ) )
+  #sort by t
+  data.table::setkey(gt_df, t, g)
 
+  # generate the requisite vector for each t, g pair;
+  # NB: This only returns a vector, and for a given t, g pair this is
+  # the (t_list == (g-1))th column
+  create_A0_tg_helper <- function(t, g, N_g) {
+      N_g * create_A0_list_for_ATE_tg(t, g, g_list, t_list, N_g_list, use_last_treated_only)
+  }
+  A_0_gt <- gt_df[, as.list(create_A0_tg_helper(t, g, N_g)), by=c("t", "g")]
+  data.table::setnames(A_0_gt, c("t", "g", g_list))
 
-  A0_list <- sum_of_lists(A0_lists)
+  # sum all the vectors corresponding to the (t_list == (g-1))th column
+  A_0_t    <- A_0_gt[,lapply(.SD, sum), by="g", .SDcols=as.character(g_list)]
+  tindices <- unlist(sapply(A_0_t$g, function(g) which(t_list == g-1)))
+  gindices <- unlist(sapply(A_0_t$g, function(g) if (any(t_list == g-1)) g else NULL))
+  data.table::setkey(A_0_t, g)
 
-  return(A0_list)
+  # place into G x T matrix
+  A_0[,tindices] <- t(A_0_t[.(gindices), !"g"])
+  return(A_0)
 }
-

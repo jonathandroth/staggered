@@ -1,3 +1,6 @@
+# ----------------------------------------------------------------------
+# Misc helpers
+# ----------------------------------------------------------------------
 
 #' @title Calculate group level summary statistics
 #' @description This function computes the mean-vector and covariance matrix of the outcomes for each cohort, where a cohort g is a group of units first treated in period g
@@ -5,77 +8,43 @@
 #' @param is_balanced If true, the df has previously been balanced so this does not need to be done internally.
 #' @return Y_bar_list A list of the means of the outcomes for each cohort g
 #' @return S_g_list A list of covariance matrices for the outcomes for each cohort g
-#' @return N_g_list A list of the number of observations for each cohort g
+#' @return N_g_DT A list of the number of observations for each cohort g
 #' @return g_list A list of when the cohorts were first treated
 #' @return t_list A list of the the time periods for the outcome. The vector of outcomes corresponds with this order.
-
 compute_g_level_summaries <- function(df, is_balanced = TRUE){
-
-  # Avoid NOTES in CRAN
-  i <- NULL
 
   #Balance the panel (and throw a warning if original panel is unbalanced)
   if(!is_balanced){
     df <- balance_df(df)
   }
-  g_list <- sort(unique(df$g))
-  t_list <- sort(unique(df$t))
+  g_list <- sort(df[,unique(g)])
+  t_list <- sort(df[,unique(t)])
 
   #Reshape so that Y_{it} is a column for all t
-  df <- df  %>%
-    tidyr::pivot_wider(id_cols = c("i","g"), names_from = "t", values_from = "y") %>%
-    dplyr::ungroup() %>%
-    dplyr::select(-i)
+  #NB: Columns with data.table::dcast will be ordered
+  #by unique values of t, per the docs.
+  df <- data.table::dcast(df, i + g ~ t, value.var="y")[,!"i"]
 
-  compute_Ybar_Sbar_g <- function(g){
-    #Filter to observations in cohort g
-    dfg <- df %>%
-           dplyr::filter(g == !!g) %>%
-           dplyr::select(-g)
+  #Sort by g
+  data.table::setkey(df, g)
+  data.table::setindex(df, g)
 
-    #Order the columns ascending in time
-    tVec <- as.numeric(colnames(dfg))
-    dfg <- dfg[,order(tVec)]
-
-    #Calculate the number of observation N_g
-    N_g <- base::NROW(dfg)
-
-    #Convert to matrix for taking a covariance
-    dfg <- dfg %>% as.matrix()
-
-    #Compute means Ybar_g and covariance S_g
-    Ybar_g <- base::colMeans(dfg)
-    S_g <- coop::covar(dfg)
-    # If covar is NA or NaN, replace it to 0
-    #S_g[is.na(S_g)] <- 0
-
-
-    return(list(Ybar_g = Ybar_g,
-                S_g = S_g,
-                N_g = N_g))
+  # Helper fun for covariance matrix
+  compute_vcov_g <- function(group) {
+      var(df[.(group),!"g"])
   }
 
-
-  resultsList <- purrr::map(.x = g_list,
-                            .f = compute_Ybar_Sbar_g)
-
-  Ybar_g_List <- purrr::map(.x = resultsList,
-                            .f = ~.x$Ybar_g)
-
-  S_g_List <- purrr::map(.x = resultsList,
-                         .f = ~.x$S_g)
-
-  N_g_List <- purrr::map(.x = resultsList,
-                         .f = ~.x$N_g)
+  Ybar_g_DT <- df[,lapply(.SD, base::mean), by="g"]
+  N_g_DT    <- df[,.(N_g=.N),by="g"]
+  S_g_List  <- lapply(g_list, compute_vcov_g)
 
 
-  return( list( Ybar_g_List = Ybar_g_List,
-                S_g_List = S_g_List,
-                N_g_List = N_g_List,
-                g_list = g_list,
-                t_list = t_list ))
+  return(list(Ybar_g_List = asplit(Ybar_g_DT[,!"g"], 1),
+              S_g_List    = S_g_List,
+              N_g_DT      = N_g_DT,
+              g_list      = g_list,
+              t_list      = t_list))
 }
-
 
 
 balance_df <- function(df){
@@ -87,41 +56,31 @@ balance_df <- function(df){
   # It also removes observations with missing y
 
   #It then removes observations i for which data is not available for all t
-
-  # Avoid NOTES in CRAN
-  i <- NULL
-  y <- NULL
-  numPeriods_i <- NULL
-  t <- NULL
-
-
-
-  numPeriods <- length(unique(df$t))
-
+  data.table::setkey(df, i, t)
+  numPeriods <- length(df[,unique(t)])
 
   ##Check that (i,t) is a unique identifier
-  if(anyDuplicated(df[c("i","t")]) > 0 ){
+  if(any(duplicated(df[,c("i","t")]))){
     stop("There are multiple observations with the same (i,t) values. The panel should have a unique outcome for each (i,t) value.")
   }
 
   #Check if there are missign values for y, and remove them if so
-  if(max(is.na(df$y)) > 0 ){
-    df <- df %>% dplyr::filter(!is.na(y))
+  if ( any(is.na(df$y)) ){
+    df <- df[!is.na(y)]
   }
 
   #Check if panel is balanced. If not, drop the unbalanced observations and throw a warning
-  df <- df %>%
-    dplyr::group_by(i) %>%
-    dplyr::mutate(numPeriods_i = length(unique(t)))
+  df[,numPeriods_i := length(t), by=.(i)]
 
-  if(min(df$numPeriods_i) == numPeriods){
+  if(df[,min(numPeriods_i)] == numPeriods){
     return(df)
   }else{
     warning("Panel is unbalanced (or has missing values for some observations). Dropping observations with missing values of Y_{it} for some time periods. If you wish to include these observations, provide staggered with a df with imputed outcomes.")
-    df <- df %>% dplyr::filter(numPeriods_i == numPeriods) %>% dplyr::select(-numPeriods_i)
+    df <- df[numPeriods_i==numPeriods,!c('numPeriods_i')]
     return(df)
   }
 }
+
 
 compute_Thetahat0 <- function(Ybar_g_list,
                               A_theta_list){
@@ -160,8 +119,6 @@ compute_Xhat <- function(Ybar_g_list, A_0_list){
 #' @param N_g_list N_g_list
 #' @param Xvar_list Xvar_list
 #' @return betastar Vector of plug-in efficient betahat estimates.
-
-
 compute_Betastar <- function(Ybar_g_list,
                              A_theta_list,
                              A_0_list,
@@ -217,6 +174,7 @@ compute_Thetahat_beta <- function(beta,
   return(thetahatbeta)
 }
 
+
 compute_Thetahat_Star <- function(Ybar_g_list,
                                   A_theta_list,
                                   A_0_list,
@@ -238,6 +196,7 @@ compute_Thetahat_Star <- function(Ybar_g_list,
 
   return(thetahatstar)
 }
+
 
 compute_se_Thetahat_beta_conservative <- function(beta,
                                                   Ybar_g_list,
@@ -293,6 +252,7 @@ compute_se_Thetahat_beta_conservative <- function(beta,
   return(se_neyman)
 }
 
+
 computeGMin <- function(A_theta_list,
                         g_list){
 
@@ -308,7 +268,6 @@ computeGMin <- function(A_theta_list,
 
   return(g_min)
 }
-
 
 
 compute_se_Thetahat_beta <- function(beta,
@@ -418,7 +377,6 @@ compute_se_Thetahat_beta <- function(beta,
 #' @param g_list g_list
 #' @param t_list t_list
 #' @return A0_list list of A_0 matrices for Xhat corresponding with all possible comparisons of cohorts before they are treated
-
 create_A0_list <- function(g_list,
                            t_list){
 
@@ -465,10 +423,6 @@ create_A0_list <- function(g_list,
 }
 
 
-
-
-
-
 sum_of_lists <- function(.l){
   #Given a list of lists all of the same length, this returns a list where the jth entry is the sum of the jth entry of all the lists
   if(length(.l) == 1){return(.l[[1]])}
@@ -483,12 +437,14 @@ sum_of_lists <- function(.l){
   return(results)
 }
 
+
 scalar_product_lists <- function(c,.l){
   #Takes a constant c and list .l, returns a list with c times each element of l
   results <- purrr::map(.x = .l,
                         .f = ~c * .x)
   return(results)
 }
+
 
 left_product_lists <- function(c,.l){
   #Takes a constant vector or matrix c and a list .l of conformable elements,
@@ -509,8 +465,9 @@ right_product_lists <- function(c,.l){
 
 
 stack_rows_of_lists <- function(.l){
-  #Given a list of lists all of the same length, where each inner list is a vector, this returns a list where the jth element is a matrix stacking all the jth elemtns
-  if(length(.l) == 1){return(.l)}
+  # Given a list of lists all of the same length, where each inner list
+  # is a vector, this returns a list where the jth element is a matrix
+  # stacking all the jth elemtns
   results <- purrr::reduce(.x = .l,
                            .f = function(l1,
                                          l2){
@@ -522,6 +479,9 @@ stack_rows_of_lists <- function(.l){
   return(results)
 }
 
+# ----------------------------------------------------------------------
+# Helpers for making the A_theta, A_0 lists
+# ----------------------------------------------------------------------
 create_Atheta_list_for_ATE_tg <- function(t,
                                           g,
                                           g_list,
@@ -530,78 +490,46 @@ create_Atheta_list_for_ATE_tg <- function(t,
                                           use_last_treated_only = FALSE,
                                           showWarnings = TRUE){
 
-
-  numPeriods <- length(t_list)
   #if(t < g & showWarnings){warning("t is less than g. ATE(t,g) is zero by assumption")}
   if(t >= max(g_list)){stop("t is greater than max(g)-1; ATE(t,g) is not identified.")}
-  #Create A_thetas for ATT_{t,g}
-  treated_cohort_index <- which(g_list == g)
 
-  N_treated <- N_g_list[[treated_cohort_index]]
+  treated_cohort_index <- which(g_list == g)
+  # event_time_index <- which(t_list == t)
+
+  #Create A_thetas for ATT_{t,g}
 
   #Create A_theta for the treated units
-  A_theta_g_treated_fn <- function(gIndex){
-    A_theta_g <- matrix(0, nrow = 1, ncol = numPeriods)
+  #NB: The old function looped through g_list and placed a 1 in the row
+  #where (g == g_list) and column where (t == t_list). But you can just
+  #put a one there directly.
 
-    if(gIndex == treated_cohort_index){
-      g <- g_list[gIndex]
-      N_g <- N_g_list[[gIndex]]
-      event_time_index <- which(t_list == t)
-      A_theta_g[event_time_index] <- N_g / N_treated
-    }
-    return(A_theta_g)
-  }
-
+  #NB: The old code made as many indices as number of cohorts, but the indices
+  #were all identical, so there is no reason to make copies,
   if(!use_last_treated_only){
     #Create a list of which cohorts are eligible to be controls for each of the cohorts
     #This will be a null list if not eligible
-    control_cohort_indices <- purrr::map(.x = 1:length(g_list),
-                                         .f = ~ which(g_list > t ))
+    control_cohort_indices <- which(g_list > t)
   }else{
     #If use_last_treated_only, compare only to the last treated cohort (i.e. max(G))
-    control_cohort_indices <- purrr::map(.x = 1:length(g_list),
-                                         .f = ~ which( (g_list > t) & (g_list ==  max(g_list) )) )
+    control_cohort_indices <- which((g_list > t) & (g_list ==  max(g_list)))
   }
+  N_control_cohorts <- sum(N_g_list[control_cohort_indices])
 
-  N_control_cohorts <- purrr::map_dbl(.x = control_cohort_indices,
-                                      .f = ~ sum(unlist(N_g_list[.x])) )
+  #This function creates the weights for the cohort in control_g_index
+  #as a controls for the cohort in treated_g_index
+  #
+  #NB: The old function looped through all g indices and returned a row of 0s
+  #if g is not in control_cohort_indices, else it returns a row of 0s with
+  #N_g/N_control in the (t == t_list)th column. But, again, you can just put
+  #that into those rows and column directly
 
-  createControlWeights_helper <- function(control_g_index,
-                                          treated_g_index = treated_cohort_index){
-    #This function creates the weights for the cohort in control_g_index as a controls for the cohort in treated_g_index
-    control_weights <- matrix(0, nrow =1, ncol = numPeriods)
-
-    #If control_g is not a valid control, return 0
-    if(! (control_g_index %in% control_cohort_indices[[treated_g_index]]) ){
-      return(control_weights)
-    }
-
-    g_treated <- g_list[treated_g_index]
-    N_g_control <- N_g_list[[control_g_index]]
-    N_g_treated <- N_g_list[[treated_g_index]]
-
-    t_control_index <- which(t_list == t)
-
-    control_weights[t_control_index] <- - N_g_control / N_control_cohorts[treated_g_index]
-    return(control_weights)
-  }
-
-  # createControlWeights <- function(control_g_index){
-  #   #Create the control weights for control_g_index using all treated cohorts, then sum them
-  #   controlWeights_g <- Reduce( x=  purrr::map(.x = eligible_cohort_index,
-  #                                       ~createControlWeights_helper(control_g_index, .x)  ) ,
-  #                               f= '+' )
-  #   return(controlWeights_g)
-  # }
-
-  A_theta_treated_list <- purrr::map(.x = 1:length(g_list),
-                                     A_theta_g_treated_fn)
-  A_theta_control_list <- purrr::map(.x = 1:length(g_list),
-                                     createControlWeights_helper )
-  A_theta_list <- purrr::map2(.x = A_theta_treated_list,
-                              .y = A_theta_control_list,
-                              .f = ~ .x + .y)
-  return(A_theta_list)
+  #NB: The old code returns a list of vectors but only event_time_index
+  #is ever populated, so this can just return a vector and the parent
+  #function can place the vector in the appropriate column
+  A_theta_t <- numeric(length(g_list))
+  A_theta_t[control_cohort_indices] <- - N_g_list[control_cohort_indices] / N_control_cohorts
+  A_theta_t[treated_cohort_index]   <- A_theta_t[treated_cohort_index] + 1
+  return(A_theta_t)
 }
 
 
@@ -609,42 +537,35 @@ create_Atheta_list_for_ATE_tg <- function(t,
 create_Atheta_list_for_event_study <- function(eventTime,
                                                g_list,
                                                t_list,
-                                               N_g_list,
+                                               N_g_DT,
                                                use_last_treated_only = FALSE){
 
-  #Create A_thetas for an ``event-study'' coefficient at lag eventTime
+  # Create A_thetas for an ``event-study'' coefficient at lag eventTime
   # This is the average treatment effects for units eventTime periods after first being treated
   # The average is taken over all cohorts g such that there is some untreated cohort at g+eventTime
   # Cohorts are weighted by the cohort size (N_g)
 
   maxG <- max(g_list)
   eligible_cohort_index <- which( ((g_list + eventTime) < maxG ) & ((g_list + eventTime) <= max(t_list) ) )
+  N_g_list <- N_g_DT$N_g
 
   if(length(eligible_cohort_index) == 0){
     stop("There are no comparison cohorts for the given eventTime")
   }
 
-  N_eligible <- base::Reduce(x = N_g_list[eligible_cohort_index],
-                             sum)
+  A_theta <- matrix(0, length(g_list), length(t_list))
+  N_eligible <- sum(N_g_list[eligible_cohort_index])
 
-  A_theta_lists <- purrr::map(.x = eligible_cohort_index,
-                              .f = ~ scalar_product_lists(N_g_list[[.x]]/N_eligible ,
-                                                          create_Atheta_list_for_ATE_tg(t =g_list[.x]+eventTime,
-                                                                                        g = g_list[.x],
-                                                                                        g_list = g_list,
-                                                                                        t_list = t_list,
-                                                                                        N_g_list = N_g_list,
-                                                                                        use_last_treated_only = use_last_treated_only
-                                                          )
-                              )
-  )
-
-  if(length(eligible_cohort_index) == 1){
-    A_theta_list <- A_theta_lists[[1]]
-  }else{
-    A_theta_list <- sum_of_lists(A_theta_lists)
+  create_Atheta_tg_helper <- function(gIndex) {
+    g <- g_list[gIndex]
+    (N_g_list[gIndex]/N_eligible) *
+      create_Atheta_list_for_ATE_tg(g+eventTime, g, g_list, t_list, N_g_list, use_last_treated_only)
   }
-  return(A_theta_list)
+  tindices <- unlist(sapply(g_list[eligible_cohort_index]+eventTime, function(t) which(t_list == t)))
+  gindices <- unlist(sapply(eligible_cohort_index, function(g) if (any(t_list == g_list[g]+eventTime)) g else NULL))
+  A_theta[,tindices] <- sapply(eligible_cohort_index, create_Atheta_tg_helper)[,gindices]
+
+  return(A_theta)
 }
 
 
@@ -655,28 +576,16 @@ create_Atheta_list_for_ATE_calendar_t <- function(t,
                                                   t_list,
                                                   N_g_list,
                                                   use_last_treated_only = FALSE){
-
   treated_by_t_indices <- which(g_list <= t)
-  N_total_treated <- sum( unlist(N_g_list[treated_by_t_indices]) )
+  N_total_treated <- sum(N_g_list[treated_by_t_indices])
 
-  A_theta_lists <- purrr::map(.x = treated_by_t_indices,
-                              .f = ~ scalar_product_lists(N_g_list[[.x]]/N_total_treated ,
-                                                          create_Atheta_list_for_ATE_tg(t =t,
-                                                                                        g = g_list[.x],
-                                                                                        g_list = g_list ,
-                                                                                        t_list = t_list,
-                                                                                        N_g_list = N_g_list,
-                                                                                        use_last_treated_only = use_last_treated_only
-                                                          )
-                              )
-  )
-
-  if(length(treated_by_t_indices) == 1){
-    A_theta_list <- A_theta_lists[[1]]
-  }else{
-    A_theta_list <- sum_of_lists(A_theta_lists)
+  create_Atheta_tg_helper <- function(gIndex) {
+      (N_g_list[gIndex] / N_total_treated) *
+          create_Atheta_list_for_ATE_tg(t, g_list[gIndex], g_list, t_list, N_g_list, use_last_treated_only)
   }
-  return(A_theta_list)
+  A_theta_t <- Reduce(`+`, lapply(treated_by_t_indices, create_Atheta_tg_helper))
+
+  return(A_theta_t)
 }
 
 
@@ -687,29 +596,14 @@ create_Atheta_list_for_ATE_cohort_g <- function(g,
                                                 t_list,
                                                 N_g_list,
                                                 use_last_treated_only = FALSE){
-
   treated_period_indices <- which(t_list >= g & t_list < max(g_list))
-  T_treated <- length( t_list[treated_period_indices] )
-
-  A_theta_lists <- purrr::map(.x = treated_period_indices,
-                              .f = ~ scalar_product_lists(1/T_treated ,
-                                                          create_Atheta_list_for_ATE_tg(t =t_list[.x],
-                                                                                        g = g,
-                                                                                        g_list = g_list ,
-                                                                                        t_list = t_list,
-                                                                                        N_g_list = N_g_list,
-                                                                                        use_last_treated_only = use_last_treated_only
-                                                          )
-                              )
-  )
-
-  if(T_treated == 1){
-    A_theta_list <- A_theta_lists[[1]]
-  }else{
-    A_theta_list <- sum_of_lists(A_theta_lists)
+  T_treated <- length(treated_period_indices)
+  A_theta_g <- matrix(0, length(g_list), length(t_list))
+  create_Atheta_tg_helper <- function(t) {
+      create_Atheta_list_for_ATE_tg(t, g, g_list, t_list, N_g_list, use_last_treated_only)
   }
-
-  return(A_theta_list)
+  A_theta_g[,treated_period_indices] <- sapply(t_list[treated_period_indices], create_Atheta_tg_helper)/T_treated
+  return(A_theta_g)
 }
 
 
@@ -717,28 +611,17 @@ create_Atheta_list_for_ATE_cohort_g <- function(g,
 
 create_Atheta_list_for_cohort_average_ATE <- function(g_list,
                                                       t_list,
-                                                      N_g_list,
+                                                      N_g_DT,
                                                       use_last_treated_only = FALSE){
-
   g_eligible_index <-  which((g_list < max(g_list)) & (g_list <= max(t_list)))
-
-  N_total_eligible <- sum(unlist(N_g_list[g_eligible_index]))
-
-  A_theta_lists <- purrr::map(.x = g_eligible_index,
-                              .f = ~ scalar_product_lists(as.numeric(N_g_list[[.x]])/N_total_eligible,
-                                                          create_Atheta_list_for_ATE_cohort_g(g = g_list[.x],
-                                                                                              g_list = g_list ,
-                                                                                              t_list = t_list,
-                                                                                              N_g_list = N_g_list,
-                                                                                              use_last_treated_only
-                                                          )
-                              )
-  )
-
-
-  A_theta_list <- sum_of_lists(A_theta_lists)
-
-  return(A_theta_list)
+  N_total_eligible <- N_g_DT[g_eligible_index, sum(N_g)]
+  N_g_list <- N_g_DT$N_g
+  create_Atheta_tg_helper <- function(gIndex) {
+      (N_g_list[gIndex] / N_total_eligible) *
+          create_Atheta_list_for_ATE_cohort_g(g_list[gIndex], g_list, t_list, N_g_list, use_last_treated_only)
+  }
+  A_theta <- Reduce(`+`, lapply(g_eligible_index, create_Atheta_tg_helper))
+  return(A_theta)
 }
 
 
@@ -746,122 +629,131 @@ create_Atheta_list_for_cohort_average_ATE <- function(g_list,
 
 create_Atheta_list_for_calendar_average_ATE <- function(g_list,
                                                         t_list,
-                                                        N_g_list,
+                                                        N_g_DT,
                                                         use_last_treated_only = FALSE){
 
   t_eligible_index <-  which((t_list >= min(g_list)) & (t_list < max(g_list)))
-
   T_eligible <- length(t_eligible_index)
+  N_g_list <- N_g_DT$N_g
+  A_theta <- matrix(0, length(g_list), length(t_list))
 
-  A_theta_lists <- purrr::map(.x = t_eligible_index,
-                              .f = ~ scalar_product_lists(1/T_eligible,
-                                                          create_Atheta_list_for_ATE_calendar_t(t = t_list[.x],
-                                                                                                g_list = g_list ,
-                                                                                                t_list = t_list,
-                                                                                                N_g_list = N_g_list,
-                                                                                                use_last_treated_only = use_last_treated_only
-                                                          )
-                              )
-  )
+  create_Atheta_tg_helper <- function(t) {
+      create_Atheta_list_for_ATE_calendar_t(t, g_list, t_list, N_g_list, use_last_treated_only)
+  }
+  A_theta[,t_eligible_index] <- sapply(t_list[t_eligible_index], create_Atheta_tg_helper) / T_eligible
 
-
-  A_theta_list <- sum_of_lists(A_theta_lists)
-
-  return(A_theta_list)
+  return(A_theta)
 }
 
 
 create_Atheta_list_for_simple_average_ATE <- function(g_list,
                                                       t_list,
-                                                      N_g_list,
+                                                      N_g_DT,
                                                       use_last_treated_only = FALSE){
 
-  # Avoif Notes on CRAN
-  g <- NULL
-
-  #Create a df with all the (g,t) pairs for which ATE is identified
-  gt_df <- purrr::cross_df( list(g = g_list, t = t_list) )
-  gt_df <- gt_df %>% dplyr::filter(t >= g, t< max(g_list))
-
+  N_g_list <- N_g_DT$N_g
+  #Create a df with all the (g,t) pairs for which ATE is identified;
   #Join in N_g for each of these pairs
-  gt_df <- dplyr::left_join( gt_df, data.frame(g= g_list, N_g = unlist(N_g_list)), by = "g")
+  gt_df <- N_g_DT[data.table::CJ(g=g_list, t=t_list)[t >= g & t < max(g_list)]]
 
   #Calculate sum of N_g for all eligible (t,g) pairs
-  N_total <- sum(gt_df$N_g)
+  N_total <- gt_df[,sum(N_g)]
+  A_theta <- matrix(0, length(g_list), length(t_list))
+  gt_df[,N_g := N_g / N_total]
 
-  A_theta_lists <- purrr::map(.x = 1:NROW(gt_df),
-                              .f = ~ scalar_product_lists(gt_df$N_g[.x]/N_total,
-                                                          create_Atheta_list_for_ATE_tg(t = gt_df$t[.x],
-                                                                                        g= gt_df$g[.x],
-                                                                                        g_list = g_list ,
-                                                                                        t_list = t_list,
-                                                                                        N_g_list = N_g_list,
-                                                                                        use_last_treated_only = use_last_treated_only
-                                                          )
-                              )
-  )
+  #sort by t
+  data.table::setkey(gt_df, t, g)
 
+  # generate the requisite vector for each t, g pair
+  create_Atheta_tg_helper <- function(t, g, N_g) {
+      N_g * create_Atheta_list_for_ATE_tg(t, g, g_list, t_list, N_g_list, use_last_treated_only)
+  }
+  A_theta_gt <- gt_df[, as.list(create_Atheta_tg_helper(t, g, N_g)), by=c("t", "g")]
+  data.table::setnames(A_theta_gt, c("t", "g", g_list))
 
-  A_theta_list <- sum_of_lists(A_theta_lists)
+  # sum all the vectors corresponding to the t-th column
+  A_theta_t <- A_theta_gt[,lapply(.SD, sum), by="t", .SDcols=as.character(g_list)]
 
-  return(A_theta_list)
+  # place into G x T matrix
+  indices <- unlist(sapply(A_theta_t$t, function(t) which(t_list == t)))
+  A_theta[,indices] <- t(A_theta_t[,!"t"])
+
+  return(A_theta)
 }
 
-#source(here("Code/refine-variance-estimates.R"))
+# ----------------------------------------------------------------------
+# Misc helpers
+# ----------------------------------------------------------------------
 
+calculate_full_vcv <- function(A_theta_list_list,
+                               A_0_list_list,
+                               Ybar_g_list,
+                               S_g_list,
+                               N_g_list,
+                               g_list,
+                               t_list,
+                               beta,
+                               resultsDF){
 
-calculate_full_vcv <- function(eventPlotResultsList, resultsDF){
-  #Calculate A_theta_list - A_0_list %*% beta for each list
-  #The reuslting list combined_A_list is a list of matrices of length |G| so that the vector of thetas is \sum combined_A_list[g] %*% Ybar
-  combine_A_lists <- function(A_theta_list,
-                              A_0_list,
-                              beta){
+  beta_list <-
+  lapply(1:length(A_theta_list_list),
+         function(i) {
+           if(is.null(beta)) {
+             compute_Betastar(Ybar_g_list,
+                              A_theta_list_list[[i]],
+                              A_0_list_list[[i]],
+                              S_g_list,
+                              N_g_list)
+           }
+           else {
+             beta
+           }
+         })
 
-    #Compute beta' %*% A_0_list
+  # Calculate A_theta_list - A_0_list %*% beta for each list
+  # --------------------------------------------------------
+
+  # The reuslting list combined_A_list is a list of matrices of length
+  # |G| so that the vector of thetas is \sum combined_A_list[g] %*% Ybar
+
+  combine_A_lists <- function(A_theta_list, A_0_list, beta) {
+    # Compute beta' %*% A_0_list
     A_0_beta_list <- left_product_lists(c = base::t(beta), .l = A_0_list)
-    #Compute A_theta_list - A_0_list %*% beta
-    combined_list <- sum_of_lists(list(A_theta_list, scalar_product_lists(-1,A_0_beta_list)) )
+    # Compute A_theta_list - A_0_list %*% beta
+    combined_list <- sum_of_lists(list(A_theta_list, scalar_product_lists(-1, A_0_beta_list)) )
     return(combined_list)
   }
-  combined_A_list <- purrr::map(.x = eventPlotResultsList,
-                                .f = ~combine_A_lists(A_theta_list = .x$A_theta_list, A_0_list = .$A_0_list, beta = .$beta)  )
+  combined_A_list <- stack_rows_of_lists(asplit(mapply(combine_A_lists, A_theta_list_list, A_0_list_list, beta_list), 2))
 
-  combined_A_list <- stack_rows_of_lists(combined_A_list)
-
-  #The newman vcv is \sum 1/N_g * combined_A * S * combined_A'
+  # The newman vcv is \sum 1/N_g * combined_A * S * combined_A'
   vcv_neyman_terms_list <-
-    purrr::pmap(.l = list(S_g = eventPlotResultsList[[1]]$S_g_list, A = combined_A_list, N_g = eventPlotResultsList[[1]]$N_g_list),
-                .f = function(S_g, A, N_g){ return((1/N_g)* A %*% S_g %*% base::t(A) ) } )
+    purrr::pmap(.l = list(S_g = S_g_list, A = combined_A_list, N_g = as.list(N_g_list)),
+                .f = function(S_g, A, N_g){ return((1/N_g) * A %*% S_g %*% base::t(A) ) } )
   vcv_neyman <- base::Reduce(f = '+', x = vcv_neyman_terms_list)
 
+  # Next, we compute the refinement to the variance estimator
+  # ---------------------------------------------------------
 
-  ##Next, we compute the refinement to the variance estimator
-
-  #First, we find the earliest gmin across the different event-study coefs
-  gMin_vec <- purrr::map_dbl(.x = eventPlotResultsList,
-                              .f = ~computeGMin(A_theta_list = .x$A_theta_list,
-                                                g_list = .x$g_list)  )
-
-  gMin <- min(gMin_vec)
-
-  betahat_g_list <- purrr::map(.x = eventPlotResultsList,
-                               .f = ~compute_se_Thetahat_beta(beta = .x$beta,
-                                                             Ybar_g_list = .x$Ybar_g_list,
-                                                             A_theta_list = .x$A_theta_list,
-                                                             A_0_list = .x$A_0_list,
-                                                             S_g_list = .x$S_g_list,
-                                                             N_g_list = .x$N_g_list,
-                                                             g_list = .x$g_list,
-                                                             t_list = .x$t_list,
-                                                             return_beta_sum = T,
-                                                             gMin = gMin
-                                                             ))
-
+  # First, we find the earliest gmin across the different event-study coefs
+  gMin <- min(mapply(computeGMin, A_theta_list_list, as.list(g_list)))
+  combine_betahat_lists <- function(A_theta_list, A_0_list, beta) {
+    compute_se_Thetahat_beta(beta            = beta,
+                             Ybar_g_list     = Ybar_g_list,
+                             A_theta_list    = A_theta_list,
+                             A_0_list        = A_0_list,
+                             S_g_list        = S_g_list,
+                             N_g_list        = N_g_list,
+                             g_list          = g_list,
+                             t_list          = t_list,
+                             return_beta_sum = T,
+                             gMin            = gMin)
+  }
+  betahat_g_list <- asplit(mapply(combine_betahat_lists, A_theta_list_list, A_0_list_list, beta_list), 2)
   stacked_betahat_g_sum <- purrr::map(.x = betahat_g_list, .f = ~base::t(.x$betahat_g_sum)) %>%
                            base::Reduce(x = ., f = rbind)
 
-  vcv_adjustment <- 1/eventPlotResultsList[[1]]$N * stacked_betahat_g_sum %*% betahat_g_list[[1]]$avg_MSM %*% base::t(stacked_betahat_g_sum)
-
+  N <- sum(N_g_list)
+  vcv_adjustment <- (1/N) * stacked_betahat_g_sum %*% betahat_g_list[[1]]$avg_MSM %*% base::t(stacked_betahat_g_sum)
   vcv <- vcv_neyman - vcv_adjustment
 
   #Set negative variances, if any, to 0 (arises from numerical precision issues sometimes)
@@ -870,7 +762,6 @@ calculate_full_vcv <- function(eventPlotResultsList, resultsDF){
 
   return(list(vcv = vcv, vcv_neyman = vcv_neyman))
 }
-
 
 
 processDF <- function(df, i, g, t, y){
@@ -914,19 +805,22 @@ processDF <- function(df, i, g, t, y){
   }
 
   if(t != "t"){
-    df[, "t"] <- df[,t]
+    df[,"t"] <- df[,t]
   }
 
   if(g != "g"){
-    df[, "g"] <-  df[,g]
+    df[,"g"] <-  df[,g]
   }
 
   if(y != "y"){
-    df[, "y"] <- df[,y]
+    df[,"y"] <- df[,y]
   }
-  return(df)
+  return(data.table::data.table(df))
 }
 
+# ----------------------------------------------------------------------
+# Main functions
+# ----------------------------------------------------------------------
 
 #' @useDynLib staggered
 #' @importFrom magrittr "%>%"
@@ -945,12 +839,11 @@ processDF <- function(df, i, g, t, y){
 #' @param beta A coefficient to use for covariate adjustment. If not specified, the plug-in optimal coefficient is used. beta =0 corresponds with the simple difference-in-means. beta = 1 corresponds with the Callaway and Sant'Anna estimator when using the default value of use_DiD_A0 = TRUE.
 #' @param use_DiD_A0 If this parameter is true, then Xhat corresponds with the scalar used by Callaway and Sant'Anna, so the Callaway and Sant'Anna estimator corresponds with beta=1. If it is false, the Xhat is a vector with all possible comparisons of pairs of cohorts before either is treated. The latter option should only be used when the number of possible comparisons is small relative to sample size.
 #' @param return_full_vcv If this is true and estimand = "eventstudy", then the function returns a list containing the full variance-covariance matrix for the event-plot estimates in addition to the usual dataframe with the estimates
-#' @param return_matrix_list If true, the function returns a list of the A_0_list and A_theta_list matrices along with betastar. This is used for internal recursive calls to calculate the variance-covariance matrix, and will generally not be needed by the end-user. Default is False.
 #' @param use_last_treated_only If true, then A_0_list and A_theta_list are created to only make comparisons with the last treated cohorts (as suggested by Sun and Abraham), rather than using not-yet-treated units as comparisons. If set to TRUE (and use_DiD_A0 = TRUE), then beta=1 corresponds with the Sun and Abraham estimator.
 #' @param compute_fisher If true, computes a Fisher Randomization Test using the studentized estimator.
 #' @param num_fisher_permutations The number of permutations to use in the Fisher Randomization Test (if compute_fisher = TRUE). Default is 500.
 #' @param skip_data_check If true, skips checks that the data is balanced and contains the colums i,t,g,y. Used in internal recursive calls to increase speed, but not recommended for end-user.
-#' @return resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = TRUE, it likewise returns a list containing lists of matrices used in the vcv calculation.)
+#' @return resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman).
 #' @references
 #' \cite{Roth, Jonatahan, and Sant'Anna, Pedro H. C. (2021),
 #'   'Efficient Estimation for Staggered Rollout Designs', arXiv: 2102.01291, \url{https://arxiv.org/abs/2102.01291}.}
@@ -1003,20 +896,31 @@ staggered <- function(df,
                       t = "t",
                       g = "g",
                       y = "y",
-                      estimand = NULL,
+                      estimand     = NULL,
                       A_theta_list = NULL,
-                      A_0_list = NULL,
-                      eventTime = 0,
-                      beta = NULL,
-                      use_DiD_A0 = ifelse(is.null(A_0_list),
-                                          TRUE,
-                                          FALSE),
-                      return_full_vcv = FALSE,
-                      return_matrix_list = FALSE,
-                      use_last_treated_only = FALSE,
-					            compute_fisher = FALSE,
-					            num_fisher_permutations = 500,
-					            skip_data_check = FALSE){
+                      A_0_list     = NULL,
+                      eventTime    = 0,
+                      beta         = NULL,
+                      use_DiD_A0   = ifelse(is.null(A_0_list), TRUE, FALSE),
+                      return_full_vcv         = FALSE,
+                      use_last_treated_only   = FALSE,
+					  compute_fisher          = FALSE,
+					  num_fisher_permutations = 500,
+					  skip_data_check         = FALSE){
+
+  # If estimand is provided, force to be lower-case (allowing for non-case sensitive inputs)
+  if(!is.null(estimand)){
+    estimand <- tolower(estimand)
+  }
+
+  if(length(eventTime) > 1) {
+    if(estimand != "eventstudy"){
+      stop("You provided a vector fpr eventTime but estimand is not set to 'eventstudy'. Did you mean to set estimand = 'eventstudy'?")
+    }
+  }
+
+  #Save the user-inputted beta (used in FRT and event study calls)
+  user_input_beta <- beta
 
   #Process the inputted df by checking the inputted columns and renaming to i,t,g,y, and balancing on (i,t)
   #We skip this if skip_data_check = TRUE
@@ -1030,106 +934,68 @@ staggered <- function(df,
     df <- balance_df(df = df)
   }
 
-
-  #  Compute number of units per cohort
-  cohort_size <- base::table(df$g)/base::length(base::table(df$t))
+  # Compute number of units per cohort
+  cohort_size <- df[,.(N=uniqueN(i)),by="g"]
   # Flag for singleton cohorts
-  flag_singleton <- as.numeric(names(cohort_size[(cohort_size==1)]))
-  # Drop cohorts which are singleton
+  flag_singleton <- cohort_size[N == 1,g]
   l_flag1 <- base::length(flag_singleton)
-  if(l_flag1 > 0){
-    gpaste <-  paste(flag_singleton, collapse=", ")
+  if ( l_flag1 ) {
+    # Drop cohorts which are singleton
+    gpaste <- paste(flag_singleton, collapse=", ")
     if(l_flag1==1){
       base::warning(paste0("The treatment cohort g = ", gpaste, " has a single cross-sectional unit. We drop this cohort."))
     } else {
       base::warning(paste0("The treatment cohorts g = ", gpaste, " have a single cross-sectional unit only. We drop these cohorts."))
     }
-
-   df <- df[(df$g %in% flag_singleton) == FALSE,]
+    df <- df[!(g %in% flag_singleton)]
   }
 
-
-  #  If estimand is provided, force to be lower-case (allowing for non-case sensitive inputs)
-  if(!is.null(estimand)){
-    estimand <- tolower(estimand)
-  }
-
-  #If eventTime is a vector, call staggered for each event-time and combine the results
-  #Add the variable eventTime to the data frame
-  if(length(eventTime) > 1){
-
-    if(estimand != "eventstudy"){
-      stop("You provided a vector fpr eventTime but estimand is not set to 'eventstudy'. Did you mean to set estimand = 'eventstudy'?")
-    }
-
-    eventPlotResultsList <-
-      purrr::map(.x = eventTime,
-                 .f = ~staggered(df = df,
-                                 estimand = estimand,
-                                 A_theta_list = A_theta_list,
-                                 A_0_list = A_0_list,
-                                 eventTime = .x,
-                                 beta = beta,
-                                 use_DiD_A0 = use_DiD_A0,
-                                 return_matrix_list = TRUE,
-                                 use_last_treated_only = use_last_treated_only,
-                                 compute_fisher = compute_fisher,
-                                 skip_data_check = T))
-
-    resultsDF <- purrr::reduce(.x = purrr::map(.x = eventPlotResultsList, .f = ~ .x$resultsDF),
-                               .f = dplyr::bind_rows)
-
-    #Add in eventTimes
-    resultsDF$eventTime <- eventTime
-
-    if(return_full_vcv){
-
-      vcvs <- calculate_full_vcv(eventPlotResultsList = eventPlotResultsList,
-                                 resultsDF = resultsDF)
-
-
-
-      resultsList <- list(resultsDF = resultsDF, vcv = vcvs$vcv, vcv_neyman = vcvs$vcv_neyman)
-
-      #Create stacked beta for the
-      return(resultsList)
-    }else{
-      return(resultsDF)
-    }
-  }
   g_level_summaries <- compute_g_level_summaries(df, is_balanced = TRUE)
   Ybar_g_list <- g_level_summaries$Ybar_g_List
-  S_g_list <- g_level_summaries$S_g_List
-  N_g_list <- g_level_summaries$N_g_List
-  g_list <- g_level_summaries$g_list
-  t_list <- g_level_summaries$t_list
-
+  S_g_list    <- g_level_summaries$S_g_List
+  N_g_DT      <- g_level_summaries$N_g_DT
+  g_list      <- g_level_summaries$g_list
+  t_list      <- g_level_summaries$t_list
+  N_g_list    <- N_g_DT$N_g
 
   #If estimand is provided, calculate the appropriate A_theta_list
   if(!is.null(estimand)){
     if(estimand == "simple"){
-      A_theta_list <- create_Atheta_list_for_simple_average_ATE(g_list = g_list,
-                                                                t_list = t_list,
-                                                                N_g_list = N_g_list,
-                                                                use_last_treated_only = use_last_treated_only)
+      A_theta <- create_Atheta_list_for_simple_average_ATE(g_list = g_list,
+                                                           t_list = t_list,
+                                                           N_g_DT = N_g_DT,
+                                                           use_last_treated_only = use_last_treated_only)
+      A_theta_list <- lapply(asplit(A_theta, 1), rbind)
     }else if(estimand == "cohort"){
-      A_theta_list <- create_Atheta_list_for_cohort_average_ATE(g_list = g_list,
-                                                                t_list = t_list,
-                                                                N_g_list = N_g_list,
-                                                                use_last_treated_only = use_last_treated_only)
+      A_theta <- create_Atheta_list_for_cohort_average_ATE(g_list = g_list,
+                                                           t_list = t_list,
+                                                           N_g_DT = N_g_DT,
+                                                           use_last_treated_only = use_last_treated_only)
+      A_theta_list <- lapply(asplit(A_theta, 1), rbind)
     }else if(estimand == "calendar"){
-      A_theta_list <- create_Atheta_list_for_calendar_average_ATE(g_list = g_list,
-                                                                  t_list = t_list,
-                                                                  N_g_list = N_g_list,
-                                                                  use_last_treated_only = use_last_treated_only)
+      A_theta <- create_Atheta_list_for_calendar_average_ATE(g_list = g_list,
+                                                             t_list = t_list,
+                                                             N_g_DT = N_g_DT,
+                                                             use_last_treated_only = use_last_treated_only)
+      A_theta_list <- lapply(asplit(A_theta, 1), rbind)
     }else if(estimand == "eventstudy"){
-      A_theta_list <- create_Atheta_list_for_event_study(eventTime = eventTime,
-                                                         g_list = g_list,
-                                                         t_list = t_list,
-                                                         N_g_list = N_g_list,
-                                                         use_last_treated_only = use_last_treated_only)
+      create_Atheta_es_helper <- function(eventTime) {
+          A_theta <-
+          create_Atheta_list_for_event_study(eventTime = eventTime,
+                                             g_list = g_list,
+                                             t_list = t_list,
+                                             N_g_DT = N_g_DT,
+                                             use_last_treated_only = use_last_treated_only)
+          lapply(asplit(A_theta, 1), rbind)
+      }
+      A_theta_list <- if ( length(eventTime) > 1 ) {
+        lapply(eventTime, create_Atheta_es_helper)
+      } else {
+        create_Atheta_es_helper(eventTime)
+      }
     }
   }
+
   #If no valid estimand is provided and no A_theta_list, throw and error
   if(is.null(A_theta_list)){
     stop("Estimand must be one of simple, cohort, calendar, or eventstudy; or custom A_theta_list must be provided")
@@ -1137,8 +1003,7 @@ staggered <- function(df,
 
   #Create A_0_list if a custom A_0_list is not provided
   if(is.null(A_0_list) & (use_DiD_A0==FALSE)){
-    A_0_list <- create_A0_list(g_list = g_list,
-                               t_list = t_list)
+    A_0_list <- create_A0_list(g_list = g_list, t_list = t_list)
   }
 
   #If use_DiD_A0, use only the A0's associated with the DiD estimand
@@ -1149,186 +1014,189 @@ staggered <- function(df,
     }
 
     if(estimand == "simple"){
-      A_0_list <- create_A0_list_for_simple_average_ATE(g_list = g_list,
-                                                        t_list = t_list,
-                                                        N_g_list = N_g_list,
-                                                        use_last_treated_only = use_last_treated_only)
+      A_0 <- create_A0_list_for_simple_average_ATE(g_list = g_list,
+                                                   t_list = t_list,
+                                                   N_g_DT = N_g_DT,
+                                                   use_last_treated_only = use_last_treated_only)
+      A_0_list <- lapply(asplit(A_0, 1), rbind)
     }else if(estimand == "cohort"){
-      A_0_list <- create_A0_list_for_cohort_average_ATE(g_list = g_list,
-                                                        t_list = t_list,
-                                                        N_g_list = N_g_list,
-                                                        use_last_treated_only = use_last_treated_only)
+      A_0 <- create_A0_list_for_cohort_average_ATE(g_list = g_list,
+                                                   t_list = t_list,
+                                                   N_g_DT = N_g_DT,
+                                                   use_last_treated_only = use_last_treated_only)
+      A_0_list <- lapply(asplit(A_0, 1), rbind)
     }else if(estimand == "calendar"){
-      A_0_list <- create_A0_list_for_calendar_average_ATE(g_list = g_list,
-                                                          t_list = t_list,
-                                                          N_g_list = N_g_list,
-                                                          use_last_treated_only = use_last_treated_only)
+      A_0 <- create_A0_list_for_calendar_average_ATE(g_list = g_list,
+                                                     t_list = t_list,
+                                                     N_g_DT = N_g_DT,
+                                                     use_last_treated_only = use_last_treated_only)
+      A_0_list <- lapply(asplit(A_0, 1), rbind)
     }else if(estimand == "eventstudy"){
-      A_0_list <- create_A0_list_for_event_study(eventTime = eventTime,
-                                                 g_list = g_list,
-                                                 t_list = t_list,
-                                                 N_g_list = N_g_list,
-                                                 use_last_treated_only = use_last_treated_only)
+      create_A0_es_helper <- function(eventTime) {
+          A_0 <-
+          create_A0_list_for_event_study(eventTime = eventTime,
+                                         g_list = g_list,
+                                         t_list = t_list,
+                                         N_g_DT = N_g_DT,
+                                         use_last_treated_only = use_last_treated_only)
+          lapply(asplit(A_0, 1), rbind)
+      }
+      A_0_list <- if ( length(eventTime) > 1 ) {
+        lapply(eventTime, create_A0_es_helper)
+      } else {
+        create_A0_es_helper(eventTime)
+      }
     }
   }
 
+  # ----------
+  # FRT helper
+  # ----------
+  compute_fisher_fun <- function(A_theta_list, A_0_list, eventTime, i_g_table, seed) {
+    # This function takes a data.frame with columns i and g, and
+    # permutes the values of g assigned to i
+    #
+    # The input i_g_table has the unique combinations of (i,g) in df,
+    # and is calculated outside for speed improvements
 
-  Xvar_list <- purrr::pmap(.l = list(A_0_list, S_g_list, N_g_list) ,
-                           .f = function(A0,S,N){
-                             return(1/N * eigenMapMatMult( eigenMapMatMult(A0,S) , base::t(A0) ) )
-                           }
-  )
-  #  Xvar_list <- purrr::pmap(.l = list(A_0_list, S_g_list, N_g_list) , .f = function(A0,S,N){ return(1/N * A0 %*%S %*% base::t(A0) )  } )
-
-  #Save the user-inputted beta (used in FRT call)
-  user_input_beta <- beta
-
-  if(is.null(beta)){
-    beta <- compute_Betastar(Ybar_g_list,
-                             A_theta_list,
-                             A_0_list,
-                             S_g_list,
-                             N_g_list,
-                             Xvar_list = Xvar_list)
-  }
-
-  #If beta =0, convert beta to the appropriate length
-  if(length(beta) == 1 && beta == 0){
-    beta = matrix(0, dim(A_0_list[[1]])[1])
-  }
-
-  thetahat <- compute_Thetahat_beta(beta = beta,
-                                    Ybar_g_list,
-                                    A_theta_list,
-                                    A_0_list,
-                                    S_g_list,
-                                    N_g_list,
-                                    Xvar_list = Xvar_list)
-  se_neyman <- compute_se_Thetahat_beta_conservative(beta = beta,
-                                                     Ybar_g_list,
-                                                     A_theta_list,
-                                                     A_0_list,
-                                                     S_g_list,
-                                                     N_g_list,
-                                                     Xvar_list = Xvar_list)
-  seResults <- compute_se_Thetahat_beta(beta = beta,
-                                        Ybar_g_list,
-                                        A_theta_list,
-                                        A_0_list,
-                                        S_g_list,
-                                        N_g_list,
-                                        g_list,
-                                        t_list,
-                                        Xvar_list = Xvar_list,
-                                        return_beta_sum = TRUE
-  )
-
-  se <- seResults$se
-
-  resultsDF <- data.frame(estimate = thetahat,
-                          se = se,
-                          se_neyman = se_neyman)
-
-  ## Do FRT, if specified
-  permuteTreatment <- function(df,i_g_table, seed){
-    #This function takes a data.frame with columns i and g, and permutes the values of g assigned to i
-    # The input i_g_table has the unique combinations of (i,g) in df, and is calculated outside for speed improvements
-
-    #Draw a random permutation of the elements of first_period_df
+    # Draw a random permutation of the elements of first_period_df
+    # Replace first_period_df$g with a permuted version based on randIndex
     set.seed(seed)
-    n = NROW(i_g_table)
-    randIndex <-
-      sample.int(n = n,
-                 size = n,
-                 replace = F)
+    i_g_table[, g := g[sample(.N)]]
 
-    #Replace first_period_df$g with a permuted version based on randIndex
-    i_g_table$g <- i_g_table$g[randIndex]
+    # Merge the new treatment assignments back with the original
+    df[i_g_table, g := list(i.g)]
 
-    #Merge the new treatment assignments back with the original
-    df$g <- NULL
-    df <- dplyr::left_join(df,
-                           i_g_table,
-                           by = c("i"))
-
-    return(df)
+    staggered::staggered(df                 = df,
+                         estimand           = NULL,
+                         beta               = user_input_beta,
+                         A_theta_list       = A_theta_list,
+                         A_0_list           = A_0_list,
+                         eventTime          = eventTime,
+                         return_full_vcv    = F,
+                         compute_fisher     = F,
+                         skip_data_check    = T)
   }
 
-  if(compute_fisher){
+  # --------------------
+  # Final results helper
+  # --------------------
+  resultsFun <- function(A_theta_list, A_0_list, eventTime) {
+    Xvar_list <- purrr::pmap(.l = list(A_0_list, S_g_list, as.list(N_g_list)) ,
+                             .f = function(A0,S,N){
+                               return(1/N * eigenMapMatMult(eigenMapMatMult(A0,S), base::t(A0)))
+                             })
 
-    #Find unique pairs of (i,g). This will be used for computing the permutations
-    # i_g_table <- df %>%
-    #              dplyr::filter(t == min(t)) %>%
-    #              dplyr::select(i,g)
-
-    i_g_table <- df %>%
-      dplyr::filter(t == min(t))
-    i_g_table <- i_g_table[,c("i","g")]
-
-    #Now, we compute the FRT for each seed, permuting treatment for each one
-      #We catch any errors in the FRT simulations, and throw a warning if at least one has an error (using the remaining draws to calculate frt)
-    FRTResults <-
-      purrr::map(.x = 1:num_fisher_permutations,
-                 .f = purrr::possibly(
-                   .f =~ staggered::staggered(df = permuteTreatment(df, i_g_table, seed = .x),
-                                              estimand = NULL,
-                                              beta = user_input_beta,
-                                              A_theta_list = A_theta_list,
-                                              A_0_list = A_0_list,
-                                              eventTime = eventTime,
-                                              return_full_vcv = F,
-                                              return_matrix_list = F,
-                                              compute_fisher = F,
-                                              skip_data_check = T) %>% mutate(seed = .x),
-                   otherwise = NULL)
-      ) %>%
-      purrr::discard(base::is.null) %>%
-      purrr::reduce(.f = dplyr::bind_rows)
-
-    successful_frt_draws <- NROW(FRTResults)
-    if(successful_frt_draws < num_fisher_permutations){
-      warning("There was an error in at least one of the FRT simulations. Removing the problematic draws.")
+    if(is.null(user_input_beta)){
+      beta <- compute_Betastar(Ybar_g_list,
+                               A_theta_list,
+                               A_0_list,
+                               S_g_list,
+                               N_g_list,
+                               Xvar_list)
     }
 
-    resultsDF$fisher_pval <- mean( abs(resultsDF$estimate/resultsDF$se) < abs(FRTResults$estimate/FRTResults$se) )
-    resultsDF$fisher_pval_se_neyman <- mean( abs(resultsDF$estimate/resultsDF$se_neyman) < abs(FRTResults$estimate/FRTResults$se_neyman) )
-    resultsDF$num_fisher_permutations <- successful_frt_draws
+    #If beta =0, convert beta to the appropriate length
+    if ( length(beta) == 1 && beta == 0){
+      beta <- matrix(0, length(A_0_list))
+    }
 
+    thetahat <- compute_Thetahat_beta(beta = beta,
+                                      Ybar_g_list,
+                                      A_theta_list,
+                                      A_0_list,
+                                      S_g_list,
+                                      N_g_list,
+                                      Xvar_list = Xvar_list)
+
+    se_neyman <- compute_se_Thetahat_beta_conservative(beta = beta,
+                                                       Ybar_g_list,
+                                                       A_theta_list,
+                                                       A_0_list,
+                                                       S_g_list,
+                                                       N_g_list,
+                                                       Xvar_list = Xvar_list)
+
+    seResults <- compute_se_Thetahat_beta(beta = beta,
+                                          Ybar_g_list,
+                                          A_theta_list,
+                                          A_0_list,
+                                          S_g_list,
+                                          N_g_list,
+                                          g_list,
+                                          t_list,
+                                          Xvar_list = Xvar_list,
+                                          return_beta_sum = TRUE)
+
+    se <- seResults$se
+
+    resultsDF <- data.frame(estimate  = thetahat,
+                            se        = se,
+                            se_neyman = se_neyman)
+
+    if ( compute_fisher ) {
+      # Find unique pairs of (i,g). This will be used for computing the permutations
+      i_g_table <- df[t == min(t), c("i","g")]
+      FRTResults <-
+        purrr::map(.x = 1:num_fisher_permutations,
+                   .f = purrr::possibly(
+                     .f =~ compute_fisher_fun(A_theta_list, A_0_list, eventTime, i_g_table, .x),
+                     otherwise = NULL))
+      FRTResults <- data.frame(do.call(rbind, FRTResults))
+
+      # Now, we compute the FRT for each seed, permuting treatment for each one
+      #
+      # We catch any errors in the FRT simulations, and throw a warning if
+      # at least one has an error (using the remaining draws to calculate frt)
+      successful_frt_draws <- NROW(FRTResults)
+      if (successful_frt_draws < num_fisher_permutations) {
+        warning("There was an error in at least one of the FRT simulations. Removing the problematic draws.")
+      }
+
+      resultsDF$fisher_pval <- mean( abs(resultsDF$estimate/resultsDF$se) < abs(FRTResults$estimate/FRTResults$se) )
+      resultsDF$fisher_pval_se_neyman <- mean( abs(resultsDF$estimate/resultsDF$se_neyman) < abs(FRTResults$estimate/FRTResults$se_neyman) )
+      resultsDF$num_fisher_permutations <- successful_frt_draws
+    }
+
+    return(resultsDF)
   }
-  if(!return_matrix_list){
-    #If return_matrix_list is not specified, then we return results DF unless return_full_vcv = TRUE
-    if(!return_full_vcv){
-      return(resultsDF)
-    }else{
+
+  #If eventTime is a vector, call staggered for each event-time and combine the results
+  #Add the variable eventTime to the data frame
+  if ( length(eventTime) > 1) {
+    resultsDF <- do.call(rbind, mapply(resultsFun, A_theta_list, A_0_list, as.list(eventTime), SIMPLIFY=FALSE))
+    #Add in eventTimes
+    resultsDF$eventTime <- eventTime
+  }
+  else {
+    resultsDF <- resultsFun(A_theta_list, A_0_list, eventTime)
+  }
+
+  if( !return_full_vcv ) {
+    return(resultsDF)
+  } else {
+    if(length(eventTime) > 1) {
+      vcvs <- calculate_full_vcv(A_theta_list, A_0_list,
+                                 beta        = user_input_beta,
+                                 Ybar_g_list = Ybar_g_list,
+                                 S_g_list    = S_g_list,
+                                 N_g_list    = N_g_list,
+                                 g_list      = g_list,
+                                 t_list      = t_list,
+                                 resultsDF   = resultsDF)
+
       resultsList <- list(resultsDF = resultsDF,
-                          vcv = as.matrix(se^2),
-                          vcv_neyman = as.matrix(se_neyman^2))
-
-      return(resultsList)
+                          vcv = vcvs$vcv,
+                          vcv_neyman = vcvs$vcv_neyman)
     }
-
-
-  }else{
-    resultsList <- list(resultsDF = resultsDF,
-                        A_theta_list = A_theta_list,
-                        A_0_list = A_0_list,
-                        beta = beta,
-                        betahat_g_sum = seResults$betahat_g_sum,
-                        avg_MSM = seResults$avg_MSM,
-                        S_g_list = S_g_list,
-                        N_g_list = N_g_list,
-                        N = seResults$N,
-                        g_list = g_list,
-                        t_list = t_list,
-                        Ybar_g_list = Ybar_g_list)
-
+    else {
+      resultsList <- list(resultsDF  = resultsDF,
+                          vcv        = as.matrix(se^2),
+                          vcv_neyman = as.matrix(se_neyman^2))
+    }
     return(resultsList)
   }
-
-
 }
-
-
 
 
 #' @title Calculate the Callaway & Sant'Anna (2020) estimator for staggered rollouts
@@ -1343,12 +1211,11 @@ staggered <- function(df,
 #' @param A_0_list This parameter allow for specifying the matrices used to construct the Xhat vector of pre-treatment differences. If left NULL, the default is to use the scalar set of controls used in Callaway and Sant'Anna. If use_DiD_A0 = FALSE, then it uses the full vector possible comparisons of (g,g') in periods t<g,g'.
 #' @param eventTime If using estimand = "eventstudy", specify what eventTime you want the event-study parameter for. The default is 0, the period in which treatment occurs. If a vector is provided, estimates are returned for all the event-times in the vector.
 #' @param return_full_vcv If this is true and estimand = "eventstudy", then the function returns a list containing the full variance-covariance matrix for the event-plot estimates in addition to the usual dataframe with the estimates
-#' @param return_matrix_list If true, the function returns a list of the A_0_list and A_theta_list matrices along with betastar. This is used for internal recursive calls to calculate the variance-covariance matrix, and will generally not be needed by the end-user. Default is False.
 #' @param compute_fisher If true, computes a Fisher Randomization Test using the studentized estimator.
 #' @param num_fisher_permutations The number of permutations to use in the Fisher Randomization Test (if compute_fisher = TRUE). Default is 500.
 #' @param skip_data_check If true, skips checks that the data is balanced and contains the colums i,t,g,y. Used in internal recursive calls to increase speed, but not recommended for end-user.
 
-#' @return resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = TRUE, it likewise returns a list containing lists of matrices used in the vcv calculation.)
+#' @return resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman).
 #' @references
 #'   \cite{Callaway, Brantly, and Sant'Anna, Pedro H. C. (2020),
 #'   'Difference-in-Differences with Multiple Time Periods', Forthcoming at the Journal of Econometrics,
@@ -1386,15 +1253,14 @@ staggered_cs <- function(df,
                          t = "t",
                          g = "g",
                          y = "y",
-                         estimand = NULL,
+                         estimand     = NULL,
                          A_theta_list = NULL,
-                         A_0_list = NULL,
-                         eventTime = 0,
-                         return_full_vcv = FALSE,
-                         return_matrix_list = FALSE,
-                         compute_fisher = FALSE,
+                         A_0_list     = NULL,
+                         eventTime    = 0,
+                         return_full_vcv         = FALSE,
+                         compute_fisher          = FALSE,
                          num_fisher_permutations = 500,
-                         skip_data_check = FALSE){
+                         skip_data_check         = FALSE){
 
   if(!skip_data_check){
     df <- processDF(df,
@@ -1408,30 +1274,27 @@ staggered_cs <- function(df,
 
 
   #Drop units who has g= < min(t), since ATT(t,g) is not identified for these units
-  TreatedBeforeMinT <- df$g <= min(df$t)
-  if(sum(TreatedBeforeMinT) > 0 ){
-    df <- df[!TreatedBeforeMinT, ]
+  TreatedBeforeMinT <- df[g <= min(t), .N]
+  if( TreatedBeforeMinT ) {
+    df <- df[g > min(t)]
     warning("Dropping units who were treated in the first period or earlier, since CS estimator is not defined (and ATT(t,g) not identified under parallel trends).")
   }
 
-  results <- staggered(df = df,
-                       estimand = estimand,
-                       A_theta_list = A_theta_list,
-                       eventTime = eventTime,
-                       beta = 1,
-                       use_DiD_A0 = TRUE,
-                       use_last_treated_only = FALSE,
-                       return_full_vcv = return_full_vcv,
-                       return_matrix_list = return_matrix_list,
-                       compute_fisher = compute_fisher,
+  results <- staggered(df                      = df,
+                       estimand                = estimand,
+                       A_theta_list            = A_theta_list,
+                       eventTime               = eventTime,
+                       beta                    = 1,
+                       use_DiD_A0              = TRUE,
+                       use_last_treated_only   = FALSE,
+                       return_full_vcv         = return_full_vcv,
+                       compute_fisher          = compute_fisher,
                        num_fisher_permutations = num_fisher_permutations,
-                       skip_data_check = skip_data_check)
+                       skip_data_check         = skip_data_check)
 
   return(results)
 
 }
-
-
 
 
 #' @title Calculate the Sun & Abraham (2020) estimator for staggered rollouts
@@ -1446,12 +1309,10 @@ staggered_cs <- function(df,
 #' @param A_0_list This parameter allow for specifying the matrices used to construct the Xhat vector of pre-treatment differences. If left NULL, the default is to use the scalar set of controls used in Callaway and Sant'Anna. If use_DiD_A0 = FALSE, then it uses the full vector possible comparisons of (g,g') in periods t<g,g'.
 #' @param eventTime If using estimand = "eventstudy", specify what eventTime you want the event-study parameter for. The default is 0, the period in which treatment occurs. If a vector is provided, estimates are returned for all the event-times in the vector.
 #' @param return_full_vcv If this is true and estimand = "eventstudy", then the function returns a list containing the full variance-covariance matrix for the event-plot estimates in addition to the usual dataframe with the estimates
-#' @param return_matrix_list If true, the function returns a list of the A_0_list and A_theta_list matrices along with betastar. This is used for internal recursive calls to calculate the variance-covariance matrix, and will generally not be needed by the end-user. Default is False.
 #' @param compute_fisher If true, computes a Fisher Randomization Test using the studentized estimator.
 #' @param num_fisher_permutations The number of permutations to use in the Fisher Randomization Test (if compute_fisher = TRUE). Default is 500.
 #' @param skip_data_check If true, skips checks that the data is balanced and contains the colums i,t,g,y. Used in internal recursive calls to increase speed, but not recommended for end-user.
-
-#' @return resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = TRUE, it likewise returns a list containing lists of matrices used in the vcv calculation.)
+#' @return resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman).
 #' @references
 #'   \cite{Sun, Liyang, and Abraham, Sarah (2020),
 #'   'Estimating dynamic treatment effects in event studies with heterogeneous treatment effects', Forthcoming at the Journal of Econometrics,
@@ -1490,15 +1351,14 @@ staggered_sa <- function(df,
                          t = "t",
                          g = "g",
                          y = "y",
-                         estimand = NULL,
+                         estimand     = NULL,
                          A_theta_list = NULL,
-                         A_0_list = NULL,
-                         eventTime = 0,
-                         return_full_vcv = FALSE,
-                         return_matrix_list = FALSE,
-                         compute_fisher = FALSE,
+                         A_0_list     = NULL,
+                         eventTime    = 0,
+                         return_full_vcv         = FALSE,
+                         compute_fisher          = FALSE,
                          num_fisher_permutations = 500,
-                         skip_data_check = FALSE){
+                         skip_data_check         = FALSE){
 
 
   if(!skip_data_check){
@@ -1512,25 +1372,23 @@ staggered_sa <- function(df,
   }
 
   #Drop units who has g= < min(t), since ATT(t,g) is not identified for these units
-  TreatedBeforeMinT <- df$g <= min(df$t)
-  if(sum(TreatedBeforeMinT) > 0 ){
-    df <- df[!TreatedBeforeMinT, ]
+  TreatedBeforeMinT <- df[g <= min(t), .N]
+  if( TreatedBeforeMinT ) {
+    df <- df[g > min(t)]
     warning("Dropping units who were treated in the first period or earlier, since SA estimator is not defined (and ATT(t,g) not identified under parallel trends).")
   }
 
-  results <- staggered(df = df,
-                       estimand = estimand,
-                       A_theta_list = A_theta_list,
-                       eventTime = eventTime,
-                       beta = 1,
-                       use_DiD_A0 = TRUE,
-                       use_last_treated_only = TRUE,
-                       return_full_vcv = return_full_vcv,
-                       return_matrix_list = return_matrix_list,
-                       compute_fisher = compute_fisher,
+  results <- staggered(df                      = df,
+                       estimand                = estimand,
+                       A_theta_list            = A_theta_list,
+                       eventTime               = eventTime,
+                       beta                    = 1,
+                       use_DiD_A0              = TRUE,
+                       use_last_treated_only   = TRUE,
+                       return_full_vcv         = return_full_vcv,
+                       compute_fisher          = compute_fisher,
                        num_fisher_permutations = num_fisher_permutations,
-                       skip_data_check = skip_data_check)
+                       skip_data_check         = skip_data_check)
 
   return(results)
-
 }
