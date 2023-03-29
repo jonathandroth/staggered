@@ -1,14 +1,10 @@
-
 #' @title Wald-test if Xhat is statistically different from zero
 #' @description \code{balance_check} computes the Wald test-statistic (F-test) for the null that E[X]=0
 #' @param Ybar_g_list Ybar_g_list
 #' @param A_0_list A_0_list
 #' @param S_g_list S_g_list
 #' @param N_g_list N_g_list
-
 #' @return Wald_test_Xhat Wald-test statistic for the balance test.
-
-
 compute_balance_test <- function(Ybar_g_list,
                                  A_0_list,
                                  S_g_list,
@@ -27,11 +23,11 @@ compute_balance_test <- function(Ybar_g_list,
   Xvar <- base::Reduce(f = '+',
                        x= Xvar_list)
 
-  Xvar <- as.matrix(Xvar)
+  Xvar <- base::as.matrix(Xvar)
   # Get the inverse
   Xvar_inv <- MASS::ginv(Xvar)
   # Compute sample size
-  sample_size <- purrr::reduce(N_g_list, sum)
+  sample_size <- purrr::reduce(N_g_list, base::sum)
 
   # Balance check
   Wald_test_Xhat <- base::t(Xhat) %*% Xvar_inv %*% Xhat

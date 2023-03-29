@@ -37,9 +37,7 @@ We first load the staggered package as well as some auxiliary packages for modif
 
 ```{r, echo =T, results = 'hide'}
 library(staggered) #load the staggered package
-library(dplyr) #load dplyr for data manipulation
-library(ggplot2) #load ggplot2 for plotting the results
-library(purrr)
+library(ggplot2)   #load ggplot2 for plotting the results
 
 df <- staggered::pj_officer_level_balanced #load the officer data
 ```
@@ -92,14 +90,13 @@ eventPlotResults <- staggered(df = df,
                               estimand = "eventstudy", 
                               eventTime = 0:23)
   
-eventPlotResults %>% head()
+head(eventPlotResults)
 ```
 ```{r}
 #Create event-study plot from the results of the event-study
-eventPlotResults %>% 
-    mutate(ymin_ptwise = estimate + 1.96*se,
-           ymax_ptwise = estimate - 1.96*se)%>%
-  ggplot(aes(x=eventTime, y =estimate)) +
+eventPlotResults$ymin_ptwise <- with(eventPlotResults, estimate + 1.96 * se)
+eventPlotResults$ymax_ptwise <- with(eventPlotResults, estimate - 1.96 * se)
+ggplot(eventPlotResults, aes(x=eventTime, y =estimate)) +
   geom_pointrange(aes(ymin = ymin_ptwise, ymax = ymax_ptwise))+ 
   geom_hline(yintercept =0) +
   xlab("Event Time") + ylab("Estimate") +

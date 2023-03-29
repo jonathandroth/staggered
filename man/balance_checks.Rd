@@ -60,11 +60,6 @@ resultsDF A data.frame containing: estimate (the point estimate), se (the standa
 This functions calculates Wald-tests for balance in staggered rollout designs proposed by Roth and Sant'Anna.
 }
 \examples{
-
-# Load some libraries
-library(dplyr)
-library(purrr)
-library(MASS)
 set.seed(1234)
 # load the officer data and subset it
 df <- pj_officer_level_balanced
@@ -100,7 +95,7 @@ event_bal_checks <- balance_checks(df = df,
   y = "complaints",
   estimand = "eventstudy",
   eventTime = 0:23)
-event_bal_checks \%>\% head()
+head(event_bal_checks)
 
 }
 \references{

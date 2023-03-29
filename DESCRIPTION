@@ -10,10 +10,9 @@ License: GPL-2
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.3
 Imports: 
     data.table,
-    dplyr,
     reshape2,
     purrr,
     Rcpp,

@@ -6,42 +6,28 @@ create_A0_list_for_ATE_tg <- function(t,
                                       N_g_list,
                                       use_last_treated_only = FALSE){
 
-  numPeriods <- length(t_list)
   #if(t < g){warning("t is less than g. ATE(t,g) is zero by assumption")}
-  if(t >= max(g_list)){stop("t is greater than max(g)-1; ATE(t,g) is not identified.")}
+  if(t >= base::max(g_list)){base::stop("t is greater than max(g)-1; ATE(t,g) is not identified.")}
 
-  #Create A0s for ATT_{t,g}
-  treated_cohort_index <- which(g_list == g)
-  # event_time_index <- which(t_list == (g-1))
+  # Create A0s for ATT_{t,g}
+  # ------------------------
 
-  #Create A0 for the treated units
-  #NB: The old function looped through g_list and placed a 1 in the row
-  #where (g == g_list) and column where (t == t_list). But you can just
-  #put a one there directly.
-
-  #NB: The old code made as many indices as number of cohorts, but the indices
-  #were all identical, so there is no reason to make copies,
+  treated_cohort_index <- base::which(g_list == g)
   if(!use_last_treated_only){
     #Create a list of which cohorts are eligible to be controls for each of the cohorts
     #This will be a null list if not eligible
-    control_cohort_indices <- which(g_list > t)
+    control_cohort_indices <- base::which(g_list > t)
   }else{
     #If use_last_treated_only, compare only to the last treated cohort (i.e. max(G))
-    control_cohort_indices <- which((g_list > t) & (g_list ==  max(g_list)))
+    control_cohort_indices <- base::which((g_list > t) & (g_list ==  base::max(g_list)))
   }
-  N_control_cohorts <- sum(N_g_list[control_cohort_indices])
+  N_control_cohorts <- base::sum(N_g_list[control_cohort_indices])
 
-  #This function creates the weights for the cohort in control_g_index
-  #as a controls for the cohort in treated_g_index
-  #
-  #NB: The old function looped through all g indices and returned a row of 0s
-  #if g is not in control_cohort_indices, else it returns a row of 0s with
-  #N_g/N_control in the ((g-1) == t_list)th column. But, again, you can just put
-  #that into those rows and column directly
-
-  A_theta_t <- numeric(length(g_list))
+  A_theta_t <- base::numeric(base::length(g_list))
+  # weights for cohort in control_g_index
   A_theta_t[control_cohort_indices] <- - N_g_list[control_cohort_indices] / N_control_cohorts
-  A_theta_t[treated_cohort_index]   <- A_theta_t[treated_cohort_index] + 1
+  # Treated units
+  A_theta_t[treated_cohort_index] <- A_theta_t[treated_cohort_index] + 1
   return(A_theta_t)
 }
 
@@ -60,25 +46,33 @@ create_A0_list_for_event_study <- function(eventTime,
   # i.e, the estimate of the the difference in period g-1 btwn cohort g and units not-yet-treated at g+eventTime
   # If use_last_treated_only = TRUE, then only the last cohort is used as a control
 
-  maxG <- max(g_list)
-  eligible_cohort_index <- which( ((g_list + eventTime) < maxG ) & ((g_list + eventTime) <= max(t_list) ) )
+  maxG <- base::max(g_list)
+  eligible_cohort_index <- base::which( ((g_list + eventTime) < maxG ) & ((g_list + eventTime) <= base::max(t_list) ) )
   N_g_list <- N_g_DT$N_g
 
-  if(length(eligible_cohort_index) == 0){
-    stop("There are no comparison cohorts for the given eventTime")
+  if(base::length(eligible_cohort_index) == 0){
+    base::stop("There are no comparison cohorts for the given eventTime")
   }
 
-  A_0 <- matrix(0, length(g_list), length(t_list))
+  A_0 <- base::matrix(0, base::length(g_list), base::length(t_list))
   N_eligible <- sum(N_g_list[eligible_cohort_index])
 
+  # length-G vector with weights for t, g, scaled by N_g/sum N_g
   create_A0_tg_helper <- function(gIndex) {
     g <- g_list[gIndex]
     (N_g_list[gIndex]/N_eligible) *
       create_A0_list_for_ATE_tg(g+eventTime, g, g_list, t_list, N_g_list, use_last_treated_only)
   }
-  tindices <- unlist(sapply(g_list[eligible_cohort_index], function(g) which(t_list == g-1)))
-  gindices <- unlist(sapply(eligible_cohort_index, function(g) if (any(t_list == g_list[g]-1)) g else NULL))
-  A_0[,tindices] <- sapply(eligible_cohort_index, create_A0_tg_helper)[,gindices]
+
+  # the results are placed in the time period columns corresponding to
+  # the eligible cohorts offset by eventTime, minus 1
+  tindices <- base::unlist(base::sapply(g_list[eligible_cohort_index], function(g) base::which(t_list == g-1)))
+
+  # we can mechanically run the helper function for all eligible cohorts,
+  # but not  all eligible cohorts will have a corresponding time column
+  # (this is particularly plausible when the event time offset is large)
+  gindices <- base::unlist(base::sapply(eligible_cohort_index, function(g) if (base::any(t_list == g_list[g]-1)) g else NULL))
+  A_0[,tindices] <- base::sapply(eligible_cohort_index, create_A0_tg_helper)[,gindices]
 
   return(A_0)
 }
@@ -89,15 +83,22 @@ create_A0_list_for_calendar_average_ATE <- function(g_list,
                                                     N_g_DT,
                                                     use_last_treated_only = FALSE){
 
-  t_eligible_index <- which(t_list >= min(g_list) & t_list < max(g_list))
-  T_eligible <- length(t_eligible_index)
+  t_eligible_index <- base::which(t_list >= base::min(g_list) & t_list < base::max(g_list))
+  T_eligible <- base::length(t_eligible_index)
   N_g_list <- N_g_DT$N_g
-  A_0 <- matrix(0, length(g_list), length(t_list))
+  A_0 <- base::matrix(0, base::length(g_list), base::length(t_list))
 
+  # G x T matrix; scaled internally
   create_A0_tg_helper <- function(t) {
       create_A0_list_for_ATE_calendar_t(t, g_list, t_list, N_g_list, use_last_treated_only)
   }
-  A_0 <- Reduce(`+`, lapply(t_list[t_eligible_index], create_A0_tg_helper))/T_eligible
+
+  # t is fixed but the output is a matrix because across cohorts, the
+  # relevant G x 1 vector is placed in the time column corresponding
+  # to the g-1 for the gth cohort; hence create_A0_tg_helper returns a
+  # matrix with those columns populated, for each t. We take the average
+  # across time (add them and divide by T_eligible
+  A_0 <- base::Reduce(`+`, base::lapply(t_list[t_eligible_index], create_A0_tg_helper))/T_eligible
 
   return(A_0)
 }
@@ -109,17 +110,23 @@ create_A0_list_for_ATE_calendar_t <- function(t,
                                               N_g_list,
                                               use_last_treated_only = FALSE){
 
-  treated_by_t_indices <- which(g_list <= t)
-  N_total_treated <- sum(N_g_list[treated_by_t_indices])
-  A_0_t <- matrix(0, length(g_list), length(t_list))
+  treated_by_t_indices <- base::which(g_list <= t)
+  N_total_treated <- base::sum(N_g_list[treated_by_t_indices])
+  A_0_t <- base::matrix(0, base::length(g_list), base::length(t_list))
 
+  # G x 1 vector containing weights for t, g; scaled by N_g / sum N_g
   create_A0_tg_helper <- function(gIndex) {
       (N_g_list[gIndex] / N_total_treated) *
           create_A0_list_for_ATE_tg(t, g_list[gIndex], g_list, t_list, N_g_list, use_last_treated_only)
   }
-  tindices <- unlist(sapply(g_list[treated_by_t_indices], function(g) which(t_list == g-1)))
-  gindices <- unlist(sapply(treated_by_t_indices, function(g) if (any(t_list == g_list[g]-1)) g else NULL))
-  A_0_t[,tindices] <- sapply(treated_by_t_indices, create_A0_tg_helper)[,gindices]
+
+  # Note each vector is placed in the time column corresponding to
+  # g-1, for some cohort g. The collection of vectors correspond to
+  # all the eligible cohorts, but they have to be place in the time
+  # columns corresponding to g-1.
+  tindices <- base::unlist(base::sapply(g_list[treated_by_t_indices], function(g) base::which(t_list == g-1)))
+  gindices <- base::unlist(base::sapply(treated_by_t_indices, function(g) if (base::any(t_list == g_list[g]-1)) g else NULL))
+  A_0_t[,tindices] <- base::sapply(treated_by_t_indices, create_A0_tg_helper)[,gindices]
 
   return(A_0_t)
 }
@@ -131,16 +138,23 @@ create_A0_list_for_cohort_average_ATE <- function(g_list,
                                                   use_last_treated_only = FALSE){
 
   N_g_list <- N_g_DT$N_g
-  g_eligible_index <-  which(g_list < max(g_list) & g_list <= max(t_list))
-  N_total_eligible <- sum(unlist(N_g_list[g_eligible_index]))
+  g_eligible_index <-  base::which(g_list < base::max(g_list) & g_list <= base::max(t_list))
+  N_total_eligible <- base::sum(base::unlist(N_g_list[g_eligible_index]))
+
+  # G x 1 vector; scaled by N_g / sum_g N_g
   create_A0_tg_helper <- function(gIndex) {
       (N_g_list[gIndex] / N_total_eligible) *
           create_A0_list_for_ATE_cohort_g(g_list[gIndex], g_list, t_list, N_g_list, use_last_treated_only)
   }
-  A_0 <- matrix(0, length(g_list), length(t_list))
-  tindices <- unlist(sapply(g_list[g_eligible_index], function(g) which(t_list == g-1)))
-  gindices <- unlist(sapply(g_eligible_index, function(g) if (any(t_list == g_list[g]-1)) g else NULL))
-  A_0[,tindices] <- sapply(g_eligible_index, create_A0_tg_helper)[,gindices]
+
+  # For each g, create_A0_list_for_ATE_cohort_g aggregates G x 1 vectors
+  # across every t (takes the average). The resulting matrix is a
+  # collection of vectors corresponding to each cohort, which must then
+  # be placed into the time columns corresponding to each cohort g-1.
+  A_0 <- base::matrix(0, base::length(g_list), base::length(t_list))
+  tindices <- base::unlist(base::sapply(g_list[g_eligible_index], function(g) base::which(t_list == g-1)))
+  gindices <- base::unlist(base::sapply(g_eligible_index, function(g) if (base::any(t_list == g_list[g]-1)) g else NULL))
+  A_0[,tindices] <- base::sapply(g_eligible_index, create_A0_tg_helper)[,gindices]
   return(A_0)
 }
 
@@ -150,13 +164,20 @@ create_A0_list_for_ATE_cohort_g <- function(g,
                                             t_list,
                                             N_g_list,
                                             use_last_treated_only = FALSE){
-  treated_period_indices <- which((t_list >= g) & (t_list < max(g_list)))
-  T_treated <- length(treated_period_indices)
-  A_theta_g <- matrix(0, length(g_list), length(t_list))
+  treated_period_indices <- base::which((t_list >= g) & (t_list < base::max(g_list)))
+  T_treated <- base::length(treated_period_indices)
+  A_theta_g <- base::matrix(0, base::length(g_list), base::length(t_list))
+
+  # G x 1 vector containing weights for t, g; will be scaled by parent function
   create_A0_tg_helper <- function(t) {
       create_A0_list_for_ATE_tg(t, g, g_list, t_list, N_g_list, use_last_treated_only)
   }
-  A_0_g <- Reduce(`+`, lapply(t_list[treated_period_indices], create_A0_tg_helper))/T_treated
+
+  # For a given given G all vectors correspond to the same time column;
+  # they will be placed in the g-1 time column by the parent function,
+  # and here we only need to take the average.
+  A_0_g <- base::Reduce(`+`, base::lapply(t_list[treated_period_indices], create_A0_tg_helper))/T_treated
+
   return(A_0_g)
 }
 
@@ -170,11 +191,11 @@ create_A0_list_for_simple_average_ATE <- function(g_list,
 
   #Create a df with all the (g,t) pairs for which ATE is identified
   #Join in N_g for each of these pairs
-  gt_df <- N_g_DT[data.table::CJ(g=g_list, t=t_list)[t >= g & t < max(g_list)]]
+  gt_df <- N_g_DT[data.table::CJ(g=g_list, t=t_list)[t >= g & t < base::max(g_list)]]
 
   #Calculate sum of N_g for all eligible (t,g) pairs
-  N_total <- gt_df[,sum(N_g)]
-  A_0 <- matrix(0, length(g_list), length(t_list))
+  N_total <- gt_df[,base::sum(N_g)]
+  A_0 <- matrix(0, base::length(g_list), base::length(t_list))
   gt_df[,N_g := N_g / N_total]
 
   #sort by t
@@ -186,16 +207,16 @@ create_A0_list_for_simple_average_ATE <- function(g_list,
   create_A0_tg_helper <- function(t, g, N_g) {
       N_g * create_A0_list_for_ATE_tg(t, g, g_list, t_list, N_g_list, use_last_treated_only)
   }
-  A_0_gt <- gt_df[, as.list(create_A0_tg_helper(t, g, N_g)), by=c("t", "g")]
+  A_0_gt <- gt_df[, base::as.list(create_A0_tg_helper(t, g, N_g)), by=c("t", "g")]
   data.table::setnames(A_0_gt, c("t", "g", g_list))
 
   # sum all the vectors corresponding to the (t_list == (g-1))th column
-  A_0_t    <- A_0_gt[,lapply(.SD, sum), by="g", .SDcols=as.character(g_list)]
-  tindices <- unlist(sapply(A_0_t$g, function(g) which(t_list == g-1)))
-  gindices <- unlist(sapply(A_0_t$g, function(g) if (any(t_list == g-1)) g else NULL))
+  A_0_t    <- A_0_gt[,base::lapply(.SD, base::sum), by="g", .SDcols=base::as.character(g_list)]
+  tindices <- base::unlist(base::sapply(A_0_t$g, function(g) base::which(t_list == g-1)))
+  gindices <- base::unlist(base::sapply(A_0_t$g, function(g) if (base::any(t_list == g-1)) g else NULL))
   data.table::setkey(A_0_t, g)
 
   # place into G x T matrix
-  A_0[,tindices] <- t(A_0_t[.(gindices), !"g"])
+  A_0[,tindices] <- base::t(A_0_t[.(gindices), !"g"])
   return(A_0)
 }
