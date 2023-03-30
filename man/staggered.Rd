@@ -17,7 +17,6 @@ staggered(
   beta = NULL,
   use_DiD_A0 = ifelse(is.null(A_0_list), TRUE, FALSE),
   return_full_vcv = FALSE,
-  return_matrix_list = FALSE,
   use_last_treated_only = FALSE,
   compute_fisher = FALSE,
   num_fisher_permutations = 500,
@@ -49,8 +48,6 @@ staggered(
 
 \item{return_full_vcv}{If this is true and estimand = "eventstudy", then the function returns a list containing the full variance-covariance matrix for the event-plot estimates in addition to the usual dataframe with the estimates}
 
-\item{return_matrix_list}{If true, the function returns a list of the A_0_list and A_theta_list matrices along with betastar. This is used for internal recursive calls to calculate the variance-covariance matrix, and will generally not be needed by the end-user. Default is False.}
-
 \item{use_last_treated_only}{If true, then A_0_list and A_theta_list are created to only make comparisons with the last treated cohorts (as suggested by Sun and Abraham), rather than using not-yet-treated units as comparisons. If set to TRUE (and use_DiD_A0 = TRUE), then beta=1 corresponds with the Sun and Abraham estimator.}
 
 \item{compute_fisher}{If true, computes a Fisher Randomization Test using the studentized estimator.}
@@ -60,17 +57,12 @@ staggered(
 \item{skip_data_check}{If true, skips checks that the data is balanced and contains the colums i,t,g,y. Used in internal recursive calls to increase speed, but not recommended for end-user.}
 }
 \value{
-resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = TRUE, it likewise returns a list containing lists of matrices used in the vcv calculation.)
+resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman).
 }
 \description{
 This functions calculates the efficient estimator for staggered rollout designs proposed by Roth and Sant'Anna.
 }
 \examples{
-
-# Load some libraries
-library(dplyr)
-library(purrr)
-library(MASS)
 set.seed(1234)
 # load the officer data and subset it
 df <- pj_officer_level_balanced
@@ -106,7 +98,7 @@ eventPlotResults <- staggered(df = df,
   y = "complaints",
   estimand = "eventstudy",
   eventTime = 0:23)
-eventPlotResults \%>\% head()
+head(eventPlotResults)
 
 }
 \references{

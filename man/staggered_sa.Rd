@@ -15,7 +15,6 @@ staggered_sa(
   A_0_list = NULL,
   eventTime = 0,
   return_full_vcv = FALSE,
-  return_matrix_list = FALSE,
   compute_fisher = FALSE,
   num_fisher_permutations = 500,
   skip_data_check = FALSE
@@ -42,8 +41,6 @@ staggered_sa(
 
 \item{return_full_vcv}{If this is true and estimand = "eventstudy", then the function returns a list containing the full variance-covariance matrix for the event-plot estimates in addition to the usual dataframe with the estimates}
 
-\item{return_matrix_list}{If true, the function returns a list of the A_0_list and A_theta_list matrices along with betastar. This is used for internal recursive calls to calculate the variance-covariance matrix, and will generally not be needed by the end-user. Default is False.}
-
 \item{compute_fisher}{If true, computes a Fisher Randomization Test using the studentized estimator.}
 
 \item{num_fisher_permutations}{The number of permutations to use in the Fisher Randomization Test (if compute_fisher = TRUE). Default is 500.}
@@ -51,16 +48,12 @@ staggered_sa(
 \item{skip_data_check}{If true, skips checks that the data is balanced and contains the colums i,t,g,y. Used in internal recursive calls to increase speed, but not recommended for end-user.}
 }
 \value{
-resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman). (If return_matrix_list = TRUE, it likewise returns a list containing lists of matrices used in the vcv calculation.)
+resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman).
 }
 \description{
 This functions calculates the Sun & Abraham (2020) estimator for staggered rollout designs using last-treated-treated units (never-treated, if availabe) as controls.
 }
 \examples{
-# Load some libraries
-library(dplyr)
-library(purrr)
-library(MASS)
 set.seed(1234)
 # load the officer data and subset it
 df <- pj_officer_level_balanced
@@ -71,7 +64,8 @@ df <- df[df$assigned \%in\% group_random,]
 # the outcome is named y,
 # and the individual identifiers are named i
 #  (this allow us to use default arguments on \code{staggered_cs}).
-df <- df \%>\% rename(t = period, y = complaints, g = first_trained, i = uid)
+oldnames <- c("period", "complaints", "first_trained", "uid")
+names(df)[match(oldnames, names(df))] <- c("t", "y", "g", "i")
 # Calculate Sun and Abraham estimator for the simple weighted average
 staggered_sa(df = df, estimand = "simple")
 # Calculate Sun and Abraham estimator for the cohort weighted average
@@ -80,8 +74,8 @@ staggered_sa(df = df, estimand = "cohort")
 staggered_sa(df = df, estimand = "calendar")
 # Calculate Sun and Abraham event-study coefficients for the first 24 months
 # (month 0 is instantaneous effect)
-# eventPlotResults <- staggered_sa(df = df, estimand = "eventstudy", eventTime = 0:23)
-# eventPlotResults \%>\% head()
+eventPlotResults <- staggered_sa(df = df, estimand = "eventstudy", eventTime = 0:23)
+head(eventPlotResults)
 
 }
 \references{
