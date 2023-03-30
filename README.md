@@ -51,7 +51,7 @@ df <- staggered::pj_officer_level_balanced #load the officer data
 
 ### Simple aggregate parameters
 
-We now can call the function calculate_adjusted_estimator_and_se to
+We now can call the function `calculate_adjusted_estimator_and_se` to
 calculate the efficient estimator. With staggered treatment timing,
 there are several ways to aggregate treatment effects across cohorts and
 time periods. The following block of code calculates the simple,
@@ -154,7 +154,7 @@ staggered(df = df,
           compute_fisher = T, 
           num_fisher_permutations = 500)
 #>       estimate          se   se_neyman fisher_pval fisher_pval_se_neyman
-#> 1 -0.001126981 0.002115194 0.002119248       0.616                 0.616
+#> 1 -0.001126981 0.002115194 0.002119248       0.642                 0.644
 #>   num_fisher_permutations
 #> 1                     500
 ```
@@ -192,33 +192,33 @@ staggered_sa(df = df,
 ```
 
 The Callaway and Sant’Anna estimator corresponds with calling the
-staggered function with beta=1 (and the default use_DiD_A0=1), and the
-Sun and Abraham estimator corresponds with calling staggered with beta=1
-and use_last_treated_only=T. If one is interested in the simple
-difference-in-means, one can call the staggered function with option
-beta=0.
+staggered function with beta=1 (and the default `use_DiD_A0=1`), and the
+Sun and Abraham estimator corresponds with calling staggered with
+`beta=1` and `use_last_treated_only=T`. If one is interested in the
+simple difference-in-means, one can call the staggered function with
+option `beta=0`.
 
 Note that the standard errors returned in the se column are based on the
 design-based approach in Roth & Sant’Anna, and thus will differ somewhat
-from those returned by the did package. The standard errors in se_neyman
-should be very similar to those returned by the did package, although
-not identical in finite samples.
+from those returned by the did package. The standard errors in
+`se_neyman` should be very similar to those returned by the did package,
+although not identical in finite samples.
 
 ## Stata implementation
 
-We also provide a Stata implementation (staggered_stata) via the RCall
+We also provide a Stata implementation (`staggered_stata`) via the RCall
 package, which calls the staggered R package from within Stata.
 
 ### Installation
 
-To install the staggered_stata package, the user first needs to install
-the github and RCall packages. This can be done with the following
-commands
+To install the `staggered_stata` package, the user first needs to
+install the github and RCall packages. This can be done with the
+following commands
 
     > net install github, from("https://haghish.github.io/github/")
     > github install haghish/rcall, version("2.5.0")
 
-**Important note:** the staggered_stata package was built under Rcall
+**Important note:** the `staggered_stata` package was built under Rcall
 version 2.5.0, and the recent release of RCall version 3.0 has created
 some compatibility issues. We will try our best to fix these issues, but
 in the meantime it is best to install version 2.5.0, as in the command
@@ -226,7 +226,7 @@ above.
 
 Note that the user must have R installed before installing the RCall
 package. The latest version of R can be downloaded
-[here](https://CRAN.R-project.org/). The staggered_stata package can
+[here](https://CRAN.R-project.org/). The `staggered_stata` package can
 then be installed with
 
     > github install jonathandroth/staggered_stata
@@ -239,9 +239,9 @@ directly and pasting them into the user’s ado/personal directory.
 
 ### Usage
 
-The syntax for staggered_stata is very similar to that for the staggered
-R package. Below are a few illustrative examples, using the same data as
-above.
+The syntax for `staggered_stata` is very similar to that for the
+staggered R package. Below are a few illustrative examples, using the
+same data as above.
 
     >use "https://github.com/jonathandroth/staggered_stata/raw/master/pj_officer_level_balanced.dta"
     >staggered, y("complaints") g("first_trained") t("period") i("uid") estimand("simple")
@@ -250,6 +250,6 @@ above.
 
 ![Stata examples.](man/figures/Stata_screenshot.png)
 
-The staggered, staggered_cs, and staggered_as commands all return a
-vector of coefficients and covariance matrix in ereturn list, and thus
+The `staggered`, `staggered_cs`, and `staggered_as` commands all return
+a vector of coefficients and covariance matrix in ereturn list, and thus
 can be used with any post-estimation command in Stata (e.g. coefplot).

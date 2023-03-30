@@ -74,7 +74,7 @@ balance_df <- function(df){
   df[,numPeriods_i := base::length(t), by=.(i)]
   numPeriods <- base::length(df[,base::unique(t)])
   if(df[,base::min(numPeriods_i)] == numPeriods){
-    return(df)
+    return(df[,!c('numPeriods_i')])
   }else{
     base::warning("Panel is unbalanced (or has missing values for some observations). Dropping observations with missing values of Y_{it} for some time periods. If you wish to include these observations, provide staggered with a df with imputed outcomes.")
     df <- df[numPeriods_i==numPeriods,!c('numPeriods_i')]
@@ -841,7 +841,7 @@ processDF <- function(df, i, g, t, y){
   }
 
   # data.table for speed
-  return(data.table::data.table(df))
+  return(data.table::data.table(df)[,c("i", "t", "g", "y")])
 }
 
 # ----------------------------------------------------------------------
@@ -957,6 +957,9 @@ staggered <- function(df,
                     g=g,
                     t=t,
                     y=y)
+    if ( compute_fisher ) {
+      df$cached_order <- 1:base::NROW(df)
+    }
     #Balance the panel (and throw a warning if original panel is unbalanced)
     df <- balance_df(df = df)
   }
@@ -1099,11 +1102,11 @@ staggered <- function(df,
     # Draw a random permutation of the elements of first_period_df
     # Replace first_period_df$g with a permuted version based on randIndex
     base::set.seed(seed)
-    i_g_table[, g := g[base::sample(.N)]]
+    i_g_table[, g := g_cached[base::sample(.N)]]
 
     # Merge the new treatment assignments back with the original
     # (NB: df is modified in place)
-    df[i_g_table, g := list(i.g)]
+    df[i_g_table[,!"g_cached"], g := (i.g)]
 
     staggered::staggered(df                 = df,
                          estimand           = NULL,
@@ -1178,8 +1181,11 @@ staggered <- function(df,
                                   se_neyman = se_neyman)
 
     if ( compute_fisher ) {
+
       # Find unique pairs of (i,g). This will be used for computing the permutations
-      i_g_table <- df[t == base::min(t), c("i","g")]
+      i_g_table <- df[t == base::min(t), c("i", "g", "cached_order")]
+      i_g_table[, c("g_cached", "cached_order") := list(g[order(cached_order)], NULL)]
+
       FRTResults <-
         purrr::map(.x = 1:num_fisher_permutations,
                    .f = purrr::possibly(
