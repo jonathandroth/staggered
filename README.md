@@ -8,17 +8,17 @@
 
 The staggered R package computes the efficient estimator for settings
 with randomized treatment timing, based on the theoretical results in
-[Roth and Sant’Anna (2021)](https://arxiv.org/pdf/2102.01291.pdf). If
+[Roth and Sant’Anna (2023)](https://arxiv.org/pdf/2102.01291.pdf). If
 units are randomly (or quasi-randomly) assigned to begin treatment at
 different dates, the efficient estimator can potentially offer
 substantial gains over methods that only impose parallel trends. The
 package also allows for calculating the generalized
 difference-in-differences estimators of [Callaway and Sant’Anna
-(2020)](https://www.sciencedirect.com/science/article/pii/S0304407620303948)
+(2021)](https://www.sciencedirect.com/science/article/pii/S0304407620303948)
 and [Sun and Abraham
-(2020)](https://www.sciencedirect.com/science/article/abs/pii/S030440762030378X)
-and the simple-difference-in-means as special cases. We also provide a
-Stata [implementation](#stata-implementation) via the RCall package.
+(2021)](https://www.sciencedirect.com/science/article/abs/pii/S030440762030378X)
+and the simple-difference-in-means as special cases. There is a Stata implementation [here](https://github.com/mcaceresb/stata-staggered). (We also previously wrote a
+Stata [implementation](#stata-implementation) via the RCall package, but recommend the native Stata package in the previous link.)
 
 ## Installation
 
@@ -207,7 +207,7 @@ although not identical in finite samples.
 ## Stata implementation
 
 We also provide a Stata implementation (`staggered_stata`) via the RCall
-package, which calls the staggered R package from within Stata.
+package, which calls the staggered R package from within Stata. As mentioned above, **we now have a [native Stata implementation](https://github.com/mcaceresb/stata-staggered) which we recommend using over `staggered_stata`.** However, the instructions are preserved below for backwards compatibility. 
 
 ### Installation
 
