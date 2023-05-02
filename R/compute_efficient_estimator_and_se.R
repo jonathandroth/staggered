@@ -605,7 +605,7 @@ create_Atheta_list_for_calendar_average_ATE <- function(g_list,
 
   # Place each vector into the column corresponding to each
   # time period, scaled by 1/T_eligible
-  A_theta[,t_eligible_index] <- 
+  A_theta[,t_eligible_index] <-
     base::sapply(t_list[t_eligible_index], create_Atheta_tg_helper) / T_eligible
 
   return(A_theta)
@@ -629,7 +629,7 @@ create_Atheta_list_for_ATE_cohort_g <- function(g,
 
   # g is fixed; compute the vector for each treated period
   # and place in the corresponding columns
-  A_theta_g[,treated_period_indices] <- 
+  A_theta_g[,treated_period_indices] <-
     base::sapply(t_list[treated_period_indices], create_Atheta_tg_helper)/T_treated
 
   # This is a matrix, which will be aggregated by the parent function
@@ -736,7 +736,7 @@ calculate_full_vcv <- function(A_theta_list_list,
   # Calculate A_theta_list - A_0_list %*% beta for each list
   # --------------------------------------------------------
 
-  # The reuslting list combined_A_list is a list of matrices of length
+  # The resulting list combined_A_list is a list of matrices of length
   # |G| so that the vector of thetas is \sum combined_A_list[g] %*% Ybar
 
   combine_A_lists <- function(A_theta_list, A_0_list, beta) {
@@ -746,7 +746,7 @@ calculate_full_vcv <- function(A_theta_list_list,
     combined_list <- sum_of_lists(list(A_theta_list, scalar_product_lists(-1, A_0_beta_list)) )
     return(combined_list)
   }
-  combined_A_list <- 
+  combined_A_list <-
     stack_rows_of_lists(base::asplit(base::mapply(combine_A_lists, A_theta_list_list, A_0_list_list, beta_list), 2))
 
   # The newman vcv is \sum 1/N_g * combined_A * S * combined_A'
@@ -769,10 +769,10 @@ calculate_full_vcv <- function(A_theta_list_list,
                              N_g_list        = N_g_list,
                              g_list          = g_list,
                              t_list          = t_list,
-                             return_beta_sum = T,
+                             return_beta_sum = TRUE,
                              gMin            = gMin)
   }
-  betahat_g_list <- 
+  betahat_g_list <-
     base::asplit(base::mapply(combine_betahat_lists, A_theta_list_list, A_0_list_list, beta_list), 2)
   stacked_betahat_g_sum <- purrr::map(.x = betahat_g_list, .f = ~base::t(.x$betahat_g_sum)) %>%
                            base::Reduce(x = ., f = base::rbind)
@@ -1114,9 +1114,9 @@ staggered <- function(df,
                          A_theta_list       = A_theta_list,
                          A_0_list           = A_0_list,
                          eventTime          = eventTime,
-                         return_full_vcv    = F,
-                         compute_fisher     = F,
-                         skip_data_check    = T)
+                         return_full_vcv    = FALSE,
+                         compute_fisher     = FALSE,
+                         skip_data_check    = TRUE)
   }
 
   # --------------------
@@ -1251,16 +1251,16 @@ staggered <- function(df,
     }
     else {
       resultsList <- list(resultsDF  = resultsDF,
-                          vcv        = base::as.matrix(se^2),
-                          vcv_neyman = base::as.matrix(se_neyman^2))
+                          vcv        = base::as.matrix(resultsDF$se^2),
+                          vcv_neyman = base::as.matrix(resultsDF$se_neyman^2))
     }
     return(resultsList)
   }
 }
 
 
-#' @title Calculate the Callaway & Sant'Anna (2020) estimator for staggered rollouts
-#' @description This functions calculates the Callaway & Sant'Anna (2020) estimator for staggered rollout designs using not-yet-treated units (including never-treated, if available) as controls.
+#' @title Calculate the Callaway & Sant'Anna (2021) estimator for staggered rollouts
+#' @description This functions calculates the Callaway & Sant'Anna (2021) estimator for staggered rollout designs using not-yet-treated units (including never-treated, if available) as controls.
 #' @param df A data frame containing panel data with the variables y (an outcome), i (an individual identifier), t (the period in which the outcome is observe), g (the period in which i is first treated, with Inf denoting never treated)
 #' @param i The name of column containing the individual (cross-sectional unit) identifier. Default is "i".
 #' @param t The name of the column containing the time periods. Default is "t".
@@ -1277,8 +1277,8 @@ staggered <- function(df,
 
 #' @return resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman).
 #' @references
-#'   \cite{Callaway, Brantly, and Sant'Anna, Pedro H. C. (2020),
-#'   'Difference-in-Differences with Multiple Time Periods', Forthcoming at the Journal of Econometrics,
+#'   \cite{Callaway, Brantly, and Sant'Anna, Pedro H. C. (2021),
+#'   'Difference-in-Differences with Multiple Time Periods', Journal of Econometrics,
 #'   \doi{10.1016/j.jeconom.2020.12.001}.}
 #' @examples
 #' # Load some libraries

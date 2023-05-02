@@ -1,6 +1,6 @@
 Package: staggered
 Title: Efficient Estimation Under Staggered Treatment Timing
-Version: 1.2.0
+Version: 1.2.901
 Authors@R: 
     c(person("Jonathan", "Roth", email = "jonathan_roth@brown.edu", role = c("aut")),
     person("Pedro H.C.", "Sant'Anna", email = "pedrohcgs@gmail.com", role = c("aut","cre")))
@@ -13,14 +13,11 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3
 Imports: 
     data.table,
-    reshape2,
     purrr,
     Rcpp,
     magrittr,
     MASS,
-    stats,
-    tidyr,
-    coop
+    stats
 LinkingTo: 
     Rcpp,
     RcppEigen
