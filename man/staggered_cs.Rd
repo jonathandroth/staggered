@@ -2,7 +2,7 @@
 % Please edit documentation in R/compute_efficient_estimator_and_se.R
 \name{staggered_cs}
 \alias{staggered_cs}
-\title{Calculate the Callaway & Sant'Anna (2020) estimator for staggered rollouts}
+\title{Calculate the Callaway & Sant'Anna (2021) estimator for staggered rollouts}
 \usage{
 staggered_cs(
   df,
@@ -51,7 +51,7 @@ staggered_cs(
 resultsDF A data.frame containing: estimate (the point estimate), se (the standard error), and se_neyman (the Neyman standard error). If a vector-valued eventTime is provided, the data.frame contains multiple rows for each eventTime and an eventTime column. If return_full_vcv = TRUE and estimand = "eventstudy", the function returns a list containing resultsDF and the full variance covariance for the event-study estimates (vcv) as well as the Neyman version of the covariance matrix (vcv_neyman).
 }
 \description{
-This functions calculates the Callaway & Sant'Anna (2020) estimator for staggered rollout designs using not-yet-treated units (including never-treated, if available) as controls.
+This functions calculates the Callaway & Sant'Anna (2021) estimator for staggered rollout designs using not-yet-treated units (including never-treated, if available) as controls.
 }
 \examples{
 # Load some libraries
@@ -80,7 +80,7 @@ head(eventPlotResults)
 
 }
 \references{
-\cite{Callaway, Brantly, and Sant'Anna, Pedro H. C. (2020),
-'Difference-in-Differences with Multiple Time Periods', Forthcoming at the Journal of Econometrics,
+\cite{Callaway, Brantly, and Sant'Anna, Pedro H. C. (2021),
+'Difference-in-Differences with Multiple Time Periods', Journal of Econometrics,
 \doi{10.1016/j.jeconom.2020.12.001}.}
 }
