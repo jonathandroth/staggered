@@ -20,7 +20,7 @@ Imports:
     stats,
     reshape2,
     tidyr,
-    coop
+    coop,
     stats
 LinkingTo: 
     Rcpp,
