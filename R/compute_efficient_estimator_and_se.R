@@ -759,7 +759,7 @@ calculate_full_vcv <- function(A_theta_list_list,
   # ---------------------------------------------------------
 
   # First, we find the earliest gmin across the different event-study coefs
-  gMin <- base::min(base::mapply(computeGMin, A_theta_list_list, base::as.list(g_list)))
+  gMin <- base::min(base::mapply(function(x) computeGMin(x, g_list), A_theta_list_list))
   combine_betahat_lists <- function(A_theta_list, A_0_list, beta) {
     compute_se_Thetahat_beta(beta            = beta,
                              Ybar_g_list     = Ybar_g_list,
@@ -926,9 +926,13 @@ staggered <- function(df,
                       use_DiD_A0   = ifelse(is.null(A_0_list), TRUE, FALSE),
                       return_full_vcv         = FALSE,
                       use_last_treated_only   = FALSE,
-					  compute_fisher          = FALSE,
-					  num_fisher_permutations = 500,
-					  skip_data_check         = FALSE){
+                      compute_fisher          = FALSE,
+                      num_fisher_permutations = 500,
+                      skip_data_check         = FALSE){
+
+  stats::runif(1) # make sure .Random.seed exists
+  rseed.cached <- .Random.seed
+  base::on.exit({.Random.seed <<- rseed.cached})
 
   # If estimand is provided, force to be lower-case (allowing for
   # non-case sensitive inputs)
@@ -1226,8 +1230,7 @@ staggered <- function(df,
                                             SIMPLIFY=FALSE))
     #Add in eventTimes
     resultsDF$eventTime <- eventTime
-  }
-  else {
+  } else {
     resultsDF <- resultsFun(A_theta_list, A_0_list, eventTime)
   }
 
