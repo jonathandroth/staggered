@@ -12,6 +12,7 @@
 #' @return g_list A list of when the cohorts were first treated
 #' @return t_list A list of the the time periods for the outcome. The vector of outcomes corresponds with this order.
 compute_g_level_summaries <- function(df, is_balanced = TRUE){
+  N_g <- NULL
 
   #Balance the panel (and throw a warning if original panel is unbalanced)
   if(!is_balanced){
@@ -48,6 +49,7 @@ compute_g_level_summaries <- function(df, is_balanced = TRUE){
 
 
 balance_df <- function(df){
+  numPeriods_i <- NULL
 
   # This function creates a balanced panel as needed for our analysis
   # -----------------------------------------------------------------
@@ -67,7 +69,7 @@ balance_df <- function(df){
 
   # Check if there are missign values for y, and remove them if so
   if ( base::any(base::is.na(df$y)) ){
-    df <- df[!base::is.na(y)]
+    df <- df[!base::is.na(df$y)]
   }
 
   # Check if panel is balanced. If not, drop the unbalanced observations and throw a warning
@@ -966,6 +968,10 @@ staggered <- function(df,
     }
     #Balance the panel (and throw a warning if original panel is unbalanced)
     df <- balance_df(df = df)
+  } else {
+    if ( compute_fisher ) {
+      df$cached_order <- 1:base::NROW(df)
+    }
   }
 
   # --------------------------

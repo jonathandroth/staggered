@@ -17,10 +17,6 @@ Imports:
     Rcpp,
     magrittr,
     MASS,
-    stats,
-    reshape2,
-    tidyr,
-    coop,
     stats
 LinkingTo: 
     Rcpp,
