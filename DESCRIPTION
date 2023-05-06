@@ -15,6 +15,7 @@ Imports:
     data.table,
     purrr,
     Rcpp,
+    RcppEigen,
     magrittr,
     MASS,
     stats

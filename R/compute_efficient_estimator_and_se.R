@@ -854,6 +854,7 @@ processDF <- function(df, i, g, t, y){
 #' @importFrom data.table ":="
 #' @importFrom magrittr "%>%"
 #' @import Rcpp
+#' @import RcppEigen
 #' @title Calculate the efficient adjusted estimator in staggered rollout designs
 #' @description This functions calculates the efficient estimator for staggered rollout designs proposed by Roth and Sant'Anna.
 #' @param df A data frame containing panel data with the variables y (an outcome), i (an individual identifier), t (the period in which the outcome is observe), g (the period in which i is first treated, with Inf denoting never treated)
