@@ -19,5 +19,5 @@ compute_balance_test(Ybar_g_list, A_0_list, S_g_list, N_g_list)
 Wald_test_Xhat Wald-test statistic for the balance test.
 }
 \description{
-\code{balance_check} computes the Wald test-statistic (F-test) for the null that E\link{X}=0
+\code{balance_check} computes the Wald test-statistic (F-test) for the null that E[X]=0
 }

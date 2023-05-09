@@ -1,5 +1,6 @@
 #include <Rcpp.h>
 #include <RcppEigen.h>
+#include <Eigen/Dense>
 // [[Rcpp::depends(RcppEigen)]]
 
 using namespace Rcpp;

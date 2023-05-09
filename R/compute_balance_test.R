@@ -1,5 +1,5 @@
 #' @title Wald-test if Xhat is statistically different from zero
-#' @description \code{balance_check} computes the Wald test-statistic (F-test) for the null that E[X]=0
+#' @description \code{balance_check} computes the Wald test-statistic (F-test) for the null that E\[X\]=0
 #' @param Ybar_g_list Ybar_g_list
 #' @param A_0_list A_0_list
 #' @param S_g_list S_g_list

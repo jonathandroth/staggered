@@ -12,6 +12,7 @@
 #' @return g_list A list of when the cohorts were first treated
 #' @return t_list A list of the the time periods for the outcome. The vector of outcomes corresponds with this order.
 compute_g_level_summaries <- function(df, is_balanced = TRUE){
+  N_g <- NULL
 
   #Balance the panel (and throw a warning if original panel is unbalanced)
   if(!is_balanced){
@@ -48,6 +49,7 @@ compute_g_level_summaries <- function(df, is_balanced = TRUE){
 
 
 balance_df <- function(df){
+  numPeriods_i <- NULL
 
   # This function creates a balanced panel as needed for our analysis
   # -----------------------------------------------------------------
@@ -67,7 +69,7 @@ balance_df <- function(df){
 
   # Check if there are missign values for y, and remove them if so
   if ( base::any(base::is.na(df$y)) ){
-    df <- df[!base::is.na(y)]
+    df <- df[!base::is.na(df$y)]
   }
 
   # Check if panel is balanced. If not, drop the unbalanced observations and throw a warning
@@ -852,6 +854,7 @@ processDF <- function(df, i, g, t, y){
 #' @importFrom data.table ":="
 #' @importFrom magrittr "%>%"
 #' @import Rcpp
+#' @import RcppEigen
 #' @title Calculate the efficient adjusted estimator in staggered rollout designs
 #' @description This functions calculates the efficient estimator for staggered rollout designs proposed by Roth and Sant'Anna.
 #' @param df A data frame containing panel data with the variables y (an outcome), i (an individual identifier), t (the period in which the outcome is observe), g (the period in which i is first treated, with Inf denoting never treated)
@@ -966,6 +969,10 @@ staggered <- function(df,
     }
     #Balance the panel (and throw a warning if original panel is unbalanced)
     df <- balance_df(df = df)
+  } else {
+    if ( compute_fisher ) {
+      df$cached_order <- 1:base::NROW(df)
+    }
   }
 
   # --------------------------

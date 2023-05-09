@@ -15,12 +15,9 @@ Imports:
     data.table,
     purrr,
     Rcpp,
+    RcppEigen,
     magrittr,
     MASS,
-    stats,
-    reshape2,
-    tidyr,
-    coop,
     stats
 LinkingTo: 
     Rcpp,
