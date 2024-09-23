@@ -505,7 +505,9 @@ create_Atheta_list_for_ATE_tg <- function(t,
   if(!use_last_treated_only){
     #Create a list of which cohorts are eligible to be controls for each of the cohorts
     #This will be a null list if not eligible
-    control_cohort_indices <- base::which(g_list > t)
+    # To make placebos more comparable, we allow the control cohorts to be only those treated after max of g,t
+    # This prevents cohort g from being include in its own control group when doing placebos
+    control_cohort_indices <- base::which(g_list > base::pmax(g,t))
   }else{
     #If use_last_treated_only, compare only to the last treated cohort (i.e. max(G))
     control_cohort_indices <- base::which((g_list > t) & (g_list == base::max(g_list)))
