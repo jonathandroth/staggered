@@ -17,7 +17,19 @@ knitr::opts_chunk$set(
 <!-- badges: start -->
 <!-- badges: end -->
 
-The staggered R package computes the efficient estimator for settings with randomized treatment timing, based on the theoretical results in [Roth and Sant'Anna (2021)](https://arxiv.org/pdf/2102.01291.pdf). If units are randomly (or quasi-randomly) assigned to begin treatment at different dates, the efficient estimator can potentially offer substantial gains over methods that only impose parallel trends. The package also allows for calculating the generalized difference-in-differences estimators of [Callaway and Sant'Anna (2020)](https://www.sciencedirect.com/science/article/pii/S0304407620303948) and [Sun and Abraham (2020)](https://www.sciencedirect.com/science/article/abs/pii/S030440762030378X) and the simple-difference-in-means as special cases. We also provide a Stata [implementation](#stata-implementation) via the RCall package.
+The staggered R package computes the efficient estimator for settings
+with randomized treatment timing, based on the theoretical results in
+[Roth and Sant’Anna (2023)](https://arxiv.org/pdf/2102.01291.pdf). If
+units are randomly (or quasi-randomly) assigned to begin treatment at
+different dates, the efficient estimator can potentially offer
+substantial gains over methods that only impose parallel trends. The
+package also allows for calculating the generalized
+difference-in-differences estimators of [Callaway and Sant’Anna
+(2021)](https://www.sciencedirect.com/science/article/pii/S0304407620303948)
+and [Sun and Abraham
+(2021)](https://www.sciencedirect.com/science/article/abs/pii/S030440762030378X)
+and the simple-difference-in-means as special cases. There is a Stata implementation [here](https://github.com/mcaceresb/stata-staggered). (We also previously wrote a
+Stata [implementation](#stata-implementation) via the RCall package, but recommend the native Stata package in the previous link.)
 
 ## Installation
 
@@ -149,35 +161,3 @@ staggered_sa(df = df,
 The Callaway and Sant'Anna estimator corresponds with calling the staggered function with beta=1 (and the default `use_DiD_A0=1`), and the Sun and Abraham estimator corresponds with calling staggered with `beta=1` and `use_last_treated_only=T`. If one is interested in the simple difference-in-means, one can call the staggered function with option `beta=0`.
 
 Note that the standard errors returned in the se column are based on the design-based approach in Roth & Sant'Anna, and thus will differ somewhat from those returned by the did package. The standard errors in `se_neyman` should be very similar to those returned by the did package, although not identical in finite samples. 
-
-
-## Stata implementation
-
-We also provide a Stata implementation (`staggered_stata`) via the RCall package, which calls the staggered R package from within Stata.
-
-### Installation
-
-To install the `staggered_stata` package, the user first needs to install the github and RCall packages. This can be done with the following commands
-    
-    > net install github, from("https://haghish.github.io/github/")
-    > github install haghish/rcall, version("2.5.0")
-
-**Important note:** the `staggered_stata` package was built under Rcall version 2.5.0, and the recent release of RCall version 3.0 has created some compatibility issues. We will try our best to fix these issues, but in the meantime it is best to install version 2.5.0, as in the command above.
-
-Note that the user must have R installed before installing the RCall package. The latest version of R can be downloaded [here](https://CRAN.R-project.org/). The `staggered_stata` package can then be installed with
-  
-    > github install jonathandroth/staggered_stata
-  
-The three packages can also be installed by downloading the ado files from the package webpages ([github](https://github.com/haghish/github), [RCall](https://github.com/haghish/rcall), [staggered_stata](https://github.com/jonathandroth/staggered_stata)) directly and pasting them into the user's ado/personal directory.
-
-### Usage
-The syntax for `staggered_stata` is very similar to that for the staggered R package. Below are a few illustrative examples, using the same data as above.
-
-    >use "https://github.com/jonathandroth/staggered_stata/raw/master/pj_officer_level_balanced.dta"
-    >staggered, y("complaints") g("first_trained") t("period") i("uid") estimand("simple")
-    >staggered_cs, y("complaints") g("first_trained") t("period") i("uid") estimand("eventstudy") eventTimeStart(-2) eventTimeEnd(2)
-    >staggered_sa, y("complaints") g("first_trained") t("period") i("uid") estimand("cohort")
-
-![Stata examples.](man/figures/Stata_screenshot.png)
-
-The `staggered`, `staggered_cs`, and `staggered_as` commands all return a vector of coefficients and covariance matrix in ereturn list, and thus can be used with any post-estimation command in Stata (e.g. coefplot). 
