@@ -206,3 +206,60 @@ design-based approach in Roth & Sant’Anna, and thus will differ somewhat
 from those returned by the did package. The standard errors in
 `se_neyman` should be very similar to those returned by the did package,
 although not identical in finite samples.
+
+## Stata implementation
+
+We also provide a Stata implementation (`staggered_stata`) via the RCall
+package, which calls the staggered R package from within Stata. As
+mentioned above, **we now have a [native Stata
+implementation](https://github.com/mcaceresb/stata-staggered) which we
+recommend using over `staggered_stata`.** However, the instructions are
+preserved below for backwards compatibility.
+
+### Installation
+
+To install the `staggered_stata` package, the user first needs to
+install the github and RCall packages. This can be done with the
+following commands
+
+    > net install github, from("https://haghish.github.io/github/")
+    > github install haghish/rcall, version("2.5.0")
+
+**Important note:** the `staggered_stata` package was built under Rcall
+version 2.5.0, and the recent release of RCall version 3.0 has created
+some compatibility issues. We will try our best to fix these issues, but
+in the meantime it is best to install version 2.5.0, as in the command
+above.
+
+Note that the user must have R installed before installing the RCall
+package. The latest version of R can be downloaded
+[here](https://CRAN.R-project.org/). The `staggered_stata` package can
+then be installed with
+
+    > github install jonathandroth/staggered_stata
+
+The three packages can also be installed by downloading the ado files
+from the package webpages ([github](https://github.com/haghish/github),
+[RCall](https://github.com/haghish/rcall),
+[staggered_stata](https://github.com/jonathandroth/staggered_stata))
+directly and pasting them into the user’s ado/personal directory.
+
+### Usage
+
+The syntax for `staggered_stata` is very similar to that for the
+staggered R package. Below are a few illustrative examples, using the
+same data as above.
+
+    >use "https://github.com/jonathandroth/staggered_stata/raw/master/pj_officer_level_balanced.dta"
+    >staggered, y("complaints") g("first_trained") t("period") i("uid") estimand("simple")
+    >staggered_cs, y("complaints") g("first_trained") t("period") i("uid") estimand("eventstudy") eventTimeStart(-2) eventTimeEnd(2)
+    >staggered_sa, y("complaints") g("first_trained") t("period") i("uid") estimand("cohort")
+
+<figure>
+<img src="man/figures/Stata_screenshot.png" alt="Stata examples." />
+<figcaption aria-hidden="true">Stata examples.</figcaption>
+</figure>
+
+The `staggered`, `staggered_cs`, and `staggered_as` commands all return
+a vector of coefficients and covariance matrix in ereturn list, and thus
+can be used with any post-estimation command in Stata (e.g. coefplot).
