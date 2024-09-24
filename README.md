@@ -8,16 +8,15 @@
 
 The staggered R package computes the efficient estimator for settings
 with randomized treatment timing, based on the theoretical results in
-[Roth and Sant’Anna (2023)](https://arxiv.org/pdf/2102.01291.pdf). If
-units are randomly (or quasi-randomly) assigned to begin treatment at
+[Roth and Sant’Anna (2023)](https://arxiv.org/pdf/2102.01291). If units
+are randomly (or quasi-randomly) assigned to begin treatment at
 different dates, the efficient estimator can potentially offer
 substantial gains over methods that only impose parallel trends. The
 package also allows for calculating the generalized
 difference-in-differences estimators of [Callaway and Sant’Anna
-(2021)](https://www.sciencedirect.com/science/article/pii/S0304407620303948)
-and [Sun and Abraham
-(2021)](https://www.sciencedirect.com/science/article/abs/pii/S030440762030378X)
-and the simple-difference-in-means as special cases. There is a Stata
+(2021)](https://doi.org/10.1016/j.jeconom.2020.12.001) and [Sun and
+Abraham (2021)](https://doi.org/10.1016/j.jeconom.2020.09.006) and the
+simple-difference-in-means as special cases. There is a Stata
 implementation [here](https://github.com/mcaceresb/stata-staggered). (We
 also previously wrote a Stata [implementation](#stata-implementation)
 via the RCall package, but recommend the native Stata package in the
@@ -35,8 +34,8 @@ devtools::install_github("jonathandroth/staggered")
 ## Example
 
 We now illustrate how to use the package by re-creating some of the
-results in the application section of [Roth and Sant’Anna
-(2021)](https://arxiv.org/pdf/2102.01291.pdf). Our data contains a
+results in the application section of \[Roth and Sant’Anna
+(2021)\](<https://arxiv.org/pdf/2102.01291>. Our data contains a
 balanced panel of police officers in Chicago who were randomly given a
 procedural justice training on different dates.
 
@@ -48,6 +47,7 @@ for modifying and plotting the results.
 ``` r
 library(staggered) #load the staggered package
 library(ggplot2)   #load ggplot2 for plotting the results
+#> Warning: package 'ggplot2' was built under R version 4.3.1
 
 df <- staggered::pj_officer_level_balanced #load the officer data
 ```
@@ -60,7 +60,7 @@ there are several ways to aggregate treatment effects across cohorts and
 time periods. The following block of code calculates the simple,
 calendar-weighted, and cohort-weighted average treatment effects (see
 Section 2.3 of [Roth and Sant’Anna
-(2021)](https://arxiv.org/pdf/2102.01291.pdf) for more about different
+(2021)](https://arxiv.org/pdf/2102.01291) for more about different
 aggregation schemes).
 
 ``` r
