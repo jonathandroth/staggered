@@ -34,8 +34,8 @@ devtools::install_github("jonathandroth/staggered")
 ## Example
 
 We now illustrate how to use the package by re-creating some of the
-results in the application section of \[Roth and Sant’Anna
-(2021)\](<https://arxiv.org/pdf/2102.01291>. Our data contains a
+results in the application section of [Roth and Sant’Anna
+(2021)](<https://arxiv.org/pdf/2102.01291>). Our data contains a
 balanced panel of police officers in Chicago who were randomly given a
 procedural justice training on different dates.
 
@@ -101,7 +101,7 @@ staggered(df = df,
 
 ### Event-study Parameters
 
-We can also calculate an \`\`event-study’’ that computes the
+We can also calculate an "event-study" that computes the
 average-treatment effect at each lag since treatment.
 
 ``` r
@@ -195,7 +195,7 @@ staggered_sa(df = df,
 ```
 
 The Callaway and Sant’Anna estimator corresponds with calling the
-staggered function with beta=1 (and the default `use_DiD_A0=1`), and the
+staggered function with `beta=1` (and the default `use_DiD_A0=1`), and the
 Sun and Abraham estimator corresponds with calling staggered with
 `beta=1` and `use_last_treated_only=T`. If one is interested in the
 simple difference-in-means, one can call the staggered function with
@@ -203,7 +203,7 @@ option `beta=0`.
 
 Note that the standard errors returned in the se column are based on the
 design-based approach in Roth & Sant’Anna, and thus will differ somewhat
-from those returned by the did package. The standard errors in
+from those returned by the `did` package. The standard errors in
 `se_neyman` should be very similar to those returned by the did package,
 although not identical in finite samples.
 
