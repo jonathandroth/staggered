@@ -1,16 +1,16 @@
 Package: staggered
 Title: Efficient Estimation Under Staggered Treatment Timing
-Version: 1.2.0-902
+Version: 1.2.1
 Authors@R: 
     c(person("Jonathan", "Roth", email = "jonathan_roth@brown.edu", role = c("aut")),
     person("Pedro H.C.", "Sant'Anna", email = "pedrohcgs@gmail.com", role = c("aut","cre")))
 Description: Efficiently estimates treatment effects in settings with randomized staggered rollouts, using tools 
-    proposed by Roth and Sant'Anna (2021) <arXiv:2102.01291>.
+    proposed by Roth and Sant'Anna (2021) <doi:10.48550/arXiv.2102.01291>.
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.2
 Imports: 
     data.table,
     purrr,
