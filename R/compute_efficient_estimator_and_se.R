@@ -535,7 +535,7 @@ create_Atheta_list_for_event_study <- function(eventTime,
   # Cohorts are weighted by the cohort size (N_g)
 
   maxG <- base::max(g_list)
-  eligible_cohort_index <- base::which( ((g_list + eventTime) < maxG ) & ((g_list + eventTime) <= base::max(t_list) ) )
+  eligible_cohort_index <- base::which( ( pmax(g_list + eventTime, g_list) < maxG ) & ( pmax(g_list + eventTime, g_list) <= base::max(t_list) ) )
   N_g_list <- N_g_DT$N_g
 
   if(base::length(eligible_cohort_index) == 0){

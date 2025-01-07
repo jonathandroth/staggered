@@ -16,7 +16,7 @@ create_A0_list_for_ATE_tg <- function(t,
   if(!use_last_treated_only){
     #Create a list of which cohorts are eligible to be controls for each of the cohorts
     #This will be a null list if not eligible
-    control_cohort_indices <- base::which(g_list > t)
+    control_cohort_indices <- base::which(g_list > pmax(t,g))
   }else{
     #If use_last_treated_only, compare only to the last treated cohort (i.e. max(G))
     control_cohort_indices <- base::which((g_list > t) & (g_list ==  base::max(g_list)))
@@ -47,7 +47,7 @@ create_A0_list_for_event_study <- function(eventTime,
   # If use_last_treated_only = TRUE, then only the last cohort is used as a control
 
   maxG <- base::max(g_list)
-  eligible_cohort_index <- base::which( ((g_list + eventTime) < maxG ) & ((g_list + eventTime) <= base::max(t_list) ) )
+  eligible_cohort_index <- base::which( ( pmax(g_list + eventTime, g_list) < maxG ) & ( pmax(g_list + eventTime, g_list) <= base::max(t_list) ) )
   N_g_list <- N_g_DT$N_g
 
   if(base::length(eligible_cohort_index) == 0){
