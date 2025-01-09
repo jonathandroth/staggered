@@ -21,6 +21,12 @@
 #' \cite{Roth, Jonatahan, and Sant'Anna, Pedro H. C. (2021),
 #'   'Efficient Estimation for Staggered Rollout Designs', arXiv: 2102.01291, \url{https://arxiv.org/abs/2102.01291}.}
 #' @examples
+#' \dontshow{
+#'   # restrict threads for CRAN compliance
+#'   dt_threads <- data.table::getDTthreads()
+#'   data.table::setDTthreads(1)
+#' }
+#'
 #' set.seed(1234)
 #' # load the officer data and subset it
 #' df <- pj_officer_level_balanced
@@ -57,6 +63,10 @@
 #'   estimand = "eventstudy",
 #'   eventTime = 0:23)
 #' head(event_bal_checks)
+#' \dontshow{
+#'   # restore thread setting
+#'   data.table::setDTthreads(dt_threads)
+#' }
 #'
 #' @export
 balance_checks <- function(df,

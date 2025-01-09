@@ -63,6 +63,12 @@ resultsDF A data.frame containing: estimate (the point estimate), se (the standa
 This functions calculates the efficient estimator for staggered rollout designs proposed by Roth and Sant'Anna.
 }
 \examples{
+\dontshow{
+  # restrict threads for CRAN compliance
+  dt_threads <- data.table::getDTthreads()
+  data.table::setDTthreads(1)
+}
+
 set.seed(1234)
 # load the officer data and subset it
 df <- pj_officer_level_balanced
@@ -99,6 +105,10 @@ eventPlotResults <- staggered(df = df,
   estimand = "eventstudy",
   eventTime = 0:23)
 head(eventPlotResults)
+\dontshow{
+  # restore thread setting
+  data.table::setDTthreads(dt_threads)
+}
 
 }
 \references{

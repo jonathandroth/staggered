@@ -54,6 +54,12 @@ resultsDF A data.frame containing: estimate (the point estimate), se (the standa
 This functions calculates the Callaway & Sant'Anna (2021) estimator for staggered rollout designs using not-yet-treated units (including never-treated, if available) as controls.
 }
 \examples{
+\dontshow{
+  # restrict threads for CRAN compliance
+  dt_threads <- data.table::getDTthreads()
+  data.table::setDTthreads(1)
+}
+
 # Load some libraries
 set.seed(1234)
 # load the officer data and subset it
@@ -77,6 +83,10 @@ staggered_cs(df = df, estimand = "calendar")
 # (month 0 is instantaneous effect)
 eventPlotResults <- staggered_cs(df = df, estimand = "eventstudy", eventTime = 0:23)
 head(eventPlotResults)
+\dontshow{
+  # restore thread setting
+  data.table::setDTthreads(dt_threads)
+}
 
 }
 \references{

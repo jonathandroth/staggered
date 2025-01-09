@@ -54,6 +54,12 @@ resultsDF A data.frame containing: estimate (the point estimate), se (the standa
 This functions calculates the Sun & Abraham (2020) estimator for staggered rollout designs using last-treated-treated units (never-treated, if availabe) as controls.
 }
 \examples{
+\dontshow{
+  # restrict threads for CRAN compliance
+  dt_threads <- data.table::getDTthreads()
+  data.table::setDTthreads(1)
+}
+
 set.seed(1234)
 # load the officer data and subset it
 df <- pj_officer_level_balanced
@@ -76,6 +82,10 @@ staggered_sa(df = df, estimand = "calendar")
 # (month 0 is instantaneous effect)
 eventPlotResults <- staggered_sa(df = df, estimand = "eventstudy", eventTime = 0:23)
 head(eventPlotResults)
+\dontshow{
+  # restore thread setting
+  data.table::setDTthreads(dt_threads)
+}
 
 }
 \references{
