@@ -562,7 +562,31 @@ create_Atheta_list_for_event_study <- function(eventTime,
   # (this is particularly plausible when the event time offset is large)
   gindices <- base::unlist(base::sapply(eligible_cohort_index,
                                         function(g) if (base::any(t_list == g_list[g]+eventTime)) g else NULL))
-  A_theta[,tindices] <- base::sapply(eligible_cohort_index, create_Atheta_tg_helper)[,gindices]
+
+  # Fix for issue #22: Handle case when no valid cohort comparisons exist
+  if (base::length(gindices) == 0) {
+    base::stop(base::paste0(
+      "No valid cohort comparisons found for eventTime = ", eventTime, ".\n",
+      "This occurs when the event time is outside the range of available time periods.\n",
+      "For eventTime = ", eventTime, ", the cohorts would need data at periods ",
+      base::paste(g_list[eligible_cohort_index] + eventTime, collapse=", "),
+      ",\nbut the available time periods are: ", base::paste(t_list, collapse=", "), ".\n\n",
+      "Suggestion: Try using a different eventTime range that falls within your data's time periods."
+    ))
+  }
+
+  # Fix for issue #22: sapply may return a vector instead of matrix
+  # when there's only one valid cohort. We need to ensure it's always a matrix for 2D indexing.
+  sapply_result <- base::sapply(eligible_cohort_index, create_Atheta_tg_helper)
+
+  # Ensure result is always a matrix, even with single cohort
+  # sapply returns a vector when length(eligible_cohort_index) == 1
+  if (!is.matrix(sapply_result)) {
+    sapply_result <- base::matrix(sapply_result, ncol = 1)
+  }
+
+  # Now safely subset with 2D indexing
+  A_theta[,tindices] <- sapply_result[, gindices, drop = FALSE]
 
   return(A_theta)
 }
@@ -1048,10 +1072,43 @@ staggered <- function(df,
                                              use_last_treated_only = use_last_treated_only)
           base::lapply(base::asplit(A_theta, 1), base::rbind)
       }
-      A_theta_list <- if ( base::length(eventTime) > 1 ) {
-        base::lapply(eventTime, create_Atheta_es_helper)
+
+      # Fix for issue #22: Handle multiple eventTime gracefully, skipping invalid ones
+      if ( base::length(eventTime) > 1 ) {
+        A_theta_list <- list()
+        valid_eventTime <- c()
+        skipped_eventTime <- c()
+
+        for (et in eventTime) {
+          result <- base::tryCatch({
+            create_Atheta_es_helper(et)
+          }, error = function(e) {
+            skipped_eventTime <<- c(skipped_eventTime, et)
+            NULL
+          })
+
+          if (!base::is.null(result)) {
+            A_theta_list[[base::length(A_theta_list) + 1]] <- result
+            valid_eventTime <- c(valid_eventTime, et)
+          }
+        }
+
+        if (base::length(skipped_eventTime) > 0) {
+          base::warning(base::paste0(
+            "Skipped eventTime = ", base::paste(skipped_eventTime, collapse=", "),
+            " due to insufficient cohort variation or out-of-range periods. ",
+            "Returning results only for eventTime = ", base::paste(valid_eventTime, collapse=", ")
+          ))
+        }
+
+        if (base::length(A_theta_list) == 0) {
+          base::stop("No valid eventTime periods found. All specified eventTime values are invalid.")
+        }
+
+        # Update eventTime to only include valid ones
+        eventTime <- valid_eventTime
       } else {
-        create_Atheta_es_helper(eventTime)
+        A_theta_list <- create_Atheta_es_helper(eventTime)
       }
     }
   }
@@ -1101,10 +1158,24 @@ staggered <- function(df,
                                          use_last_treated_only = use_last_treated_only)
           base::lapply(base::asplit(A_0, 1), base::rbind)
       }
-      A_0_list <- if ( base::length(eventTime) > 1 ) {
-        base::lapply(eventTime, create_A0_es_helper)
+
+      # Fix for issue #22: Handle multiple eventTime gracefully, matching A_theta_list
+      if ( base::length(eventTime) > 1 ) {
+        A_0_list <- list()
+
+        for (et in eventTime) {
+          result <- base::tryCatch({
+            create_A0_es_helper(et)
+          }, error = function(e) {
+            NULL  # Skip invalid eventTime
+          })
+
+          if (!base::is.null(result)) {
+            A_0_list[[base::length(A_0_list) + 1]] <- result
+          }
+        }
       } else {
-        create_A0_es_helper(eventTime)
+        A_0_list <- create_A0_es_helper(eventTime)
       }
     }
   }
