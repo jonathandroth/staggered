@@ -72,7 +72,15 @@ create_A0_list_for_event_study <- function(eventTime,
   # but not  all eligible cohorts will have a corresponding time column
   # (this is particularly plausible when the event time offset is large)
   gindices <- base::unlist(base::sapply(eligible_cohort_index, function(g) if (base::any(t_list == g_list[g]-1)) g else NULL))
-  A_0[,tindices] <- base::sapply(eligible_cohort_index, create_A0_tg_helper)[,gindices]
+
+  # Fix for issue #22: ensure result is always a matrix when there are valid cohorts
+  if (base::length(gindices) > 0) {
+    sapply_result <- base::sapply(eligible_cohort_index, create_A0_tg_helper)
+    if (!is.matrix(sapply_result)) {
+      sapply_result <- base::matrix(sapply_result, ncol = 1)
+    }
+    A_0[,tindices] <- sapply_result[, gindices, drop = FALSE]
+  }
 
   return(A_0)
 }
@@ -126,7 +134,15 @@ create_A0_list_for_ATE_calendar_t <- function(t,
   # columns corresponding to g-1.
   tindices <- base::unlist(base::sapply(g_list[treated_by_t_indices], function(g) base::which(t_list == g-1)))
   gindices <- base::unlist(base::sapply(treated_by_t_indices, function(g) if (base::any(t_list == g_list[g]-1)) g else NULL))
-  A_0_t[,tindices] <- base::sapply(treated_by_t_indices, create_A0_tg_helper)[,gindices]
+
+  # Fix for issue #22: ensure result is always a matrix when there are valid cohorts
+  if (base::length(gindices) > 0) {
+    sapply_result <- base::sapply(treated_by_t_indices, create_A0_tg_helper)
+    if (!is.matrix(sapply_result)) {
+      sapply_result <- base::matrix(sapply_result, ncol = 1)
+    }
+    A_0_t[,tindices] <- sapply_result[, gindices, drop = FALSE]
+  }
 
   return(A_0_t)
 }
@@ -154,7 +170,15 @@ create_A0_list_for_cohort_average_ATE <- function(g_list,
   A_0 <- base::matrix(0, base::length(g_list), base::length(t_list))
   tindices <- base::unlist(base::sapply(g_list[g_eligible_index], function(g) base::which(t_list == g-1)))
   gindices <- base::unlist(base::sapply(g_eligible_index, function(g) if (base::any(t_list == g_list[g]-1)) g else NULL))
-  A_0[,tindices] <- base::sapply(g_eligible_index, create_A0_tg_helper)[,gindices]
+
+  # Fix for issue #22: ensure result is always a matrix when there are valid cohorts
+  if (base::length(gindices) > 0) {
+    sapply_result <- base::sapply(g_eligible_index, create_A0_tg_helper)
+    if (!is.matrix(sapply_result)) {
+      sapply_result <- base::matrix(sapply_result, ncol = 1)
+    }
+    A_0[,tindices] <- sapply_result[, gindices, drop = FALSE]
+  }
   return(A_0)
 }
 
